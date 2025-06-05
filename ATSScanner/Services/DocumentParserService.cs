@@ -122,6 +122,14 @@ namespace ATSScanner.Services
 
         private string CleanupText(string text)
         {
+            // Fix common technical terms first
+            text = text.Replace(". NET", ".NET")
+                      .Replace(". net", ".NET")
+                      .Replace("vb. net", "vb.net")
+                      .Replace("vb. Net", "vb.net")
+                      .Replace("ASP. NET", "ASP.NET")
+                      .Replace("ASP. Net", "ASP.NET");
+
             // Replace multiple spaces with a single space
             text = Regex.Replace(text, @"\s+", " ");
 
@@ -141,8 +149,17 @@ namespace ATSScanner.Services
             // Fix spacing around pipes
             text = Regex.Replace(text, @"\s*\|\s*", " | ");
 
+            // Fix spacing around colons in section headers
+            text = Regex.Replace(text, @"([A-Za-z]+)\s*:\s*", "$1: ");
+
             // Remove multiple consecutive line breaks
             text = Regex.Replace(text, @"\r\n\s*\r\n", "\r\n\r\n");
+
+            // Fix spacing in lists
+            text = Regex.Replace(text, @"([A-Za-z])\s*:\s*([A-Za-z])", "$1: $2");
+
+            // Fix spacing in technical terms
+            text = Regex.Replace(text, @"([A-Za-z])\.([A-Za-z])", "$1.$2");
 
             return text.Trim();
         }
