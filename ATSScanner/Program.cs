@@ -2,6 +2,11 @@ using ATSScanner.Data;
 using ATSScanner.Services;
 using Microsoft.EntityFrameworkCore;
 using OpenAI;
+using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +18,11 @@ builder.Services.AddScoped<PdfParserService>();
 builder.Services.AddScoped<OpenAIService>();
 builder.Services.AddScoped<AtsScoringService>();
 builder.Services.AddScoped<DocumentParserService>();
+builder.Services.AddScoped<UserService>();
+
+
+
+
 // Add OpenAI client
 builder.Services.AddSingleton<OpenAIClient>(sp =>
 {
@@ -35,6 +45,27 @@ builder.Services.AddDbContext<DataContext>(options =>
         });
 });
 
+var jwtSettings = builder.Configuration.GetSection("Jwt");
+var key = Encoding.ASCII.GetBytes(jwtSettings["Key"]);
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidAudience = jwtSettings["Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(key)
+    };
+});
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -46,6 +77,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
@@ -65,5 +97,8 @@ using (var scope = app.Services.CreateScope())
         logger.LogError(ex, "An error occurred while creating/migrating the database.");
     }
 }
+
+
+
 
 app.Run();

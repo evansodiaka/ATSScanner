@@ -9,5 +9,6 @@ namespace ATSScanner.Data
 
         public DbSet<Resume> Resumes { get; set; }
         public DbSet<ResumeAnalysis> ResumeAnalyses { get; set; }
+        public DbSet<User> Users { get; set; }
     }
 }
