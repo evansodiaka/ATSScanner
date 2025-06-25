@@ -27,7 +27,13 @@ builder.Services.AddScoped<UserService>();
 builder.Services.AddSingleton<OpenAIClient>(sp =>
 {
     var configuration = sp.GetRequiredService<IConfiguration>();
-    var apiKey = configuration["OpenAI:ApiKey"];
+    var apiKey = configuration["OpenAI:ApiKey"] ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY");
+    
+    if (string.IsNullOrEmpty(apiKey))
+    {
+        throw new InvalidOperationException("OpenAI API key not found. Please set it in appsettings.Development.json or as an environment variable OPENAI_API_KEY");
+    }
+    
     return new OpenAIClient(apiKey);
 });
 
@@ -43,6 +49,16 @@ builder.Services.AddDbContext<DataContext>(options =>
                 maxRetryDelay: TimeSpan.FromSeconds(30),
                 errorNumbersToAdd: null);
         });
+});
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp",
+        builder => builder
+            .WithOrigins("http://localhost:3000")
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials());
 });
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
@@ -81,6 +97,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.UseCors("AllowReactApp");
 
 // Ensure database is created and migrations are applied
 using (var scope = app.Services.CreateScope())

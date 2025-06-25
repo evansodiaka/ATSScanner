@@ -5,11 +5,15 @@ using ATSScanner.Data;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 
 namespace ATSScanner.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class ResumeController : ControllerBase
     {
         private readonly ILogger<ResumeController> _logger;
@@ -33,6 +37,16 @@ namespace ATSScanner.Controllers
             _pdfParser = pdfParser;
             _atsScoringService = atsScoringService;
             _openAIService = openAIService;
+        }
+
+        private int GetCurrentUserId()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (int.TryParse(userIdClaim, out int userId))
+            {
+                return userId;
+            }
+            throw new UnauthorizedAccessException("User ID not found in token");
         }
 
         [HttpPost("upload")]
@@ -87,12 +101,16 @@ namespace ATSScanner.Controllers
                     return BadRequest("No text content could be extracted from the file");
                 }
 
+                // Get current user ID
+                var userId = GetCurrentUserId();
+
                 // Create resume record
                 var resume = new Resume
                 {
                     FileName = file.FileName,
                     Content = content,
-                    UploadDate = DateTime.UtcNow
+                    UploadDate = DateTime.UtcNow,
+                    UserId = userId
                 };
 
                 _context.Resumes.Add(resume);
@@ -118,6 +136,7 @@ namespace ATSScanner.Controllers
 
                 return Ok(new
                 {
+                    resumeId = resume.Id,
                     content,
                     atsScore,
                     aiAnalysis = new
@@ -131,6 +150,71 @@ namespace ATSScanner.Controllers
             {
                 _logger.LogError(ex, "Error processing resume upload");
                 return StatusCode(500, $"Error processing resume: {ex.Message}");
+            }
+        }
+
+        [HttpGet("my-resumes")]
+        public async Task<IActionResult> GetMyResumes()
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                var resumes = await _context.Resumes
+                    .Where(r => r.UserId == userId)
+                    .Include(r => r.Analysis)
+                    .OrderByDescending(r => r.UploadDate)
+                    .Select(r => new
+                    {
+                        r.Id,
+                        r.FileName,
+                        r.UploadDate,
+                        atsScore = r.Analysis != null ? r.Analysis.AtsScore : 0,
+                        aiScore = r.Analysis != null ? r.Analysis.AiScore : 0
+                    })
+                    .ToListAsync();
+
+                return Ok(resumes);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching user resumes");
+                return StatusCode(500, "Error fetching resumes");
+            }
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetResume(int id)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                var resume = await _context.Resumes
+                    .Include(r => r.Analysis)
+                    .FirstOrDefaultAsync(r => r.Id == id && r.UserId == userId);
+
+                if (resume == null)
+                {
+                    return NotFound("Resume not found");
+                }
+
+                return Ok(new
+                {
+                    resume.Id,
+                    resume.FileName,
+                    resume.Content,
+                    resume.UploadDate,
+                    analysis = resume.Analysis != null ? new
+                    {
+                        atsScore = resume.Analysis.AtsScore,
+                        aiScore = resume.Analysis.AiScore,
+                        feedback = resume.Analysis.Feedback
+                    } : null
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching resume");
+                return StatusCode(500, "Error fetching resume");
             }
         }
     }

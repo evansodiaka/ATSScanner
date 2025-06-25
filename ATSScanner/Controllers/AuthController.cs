@@ -32,12 +32,30 @@ public class AuthController : ControllerBase
         if (user == null)
             return Unauthorized("Invalid credentials.");
 
-        // JWT token generation will be added in the next step
         var token = _userService.GenerateJwtToken(user);
         if (string.IsNullOrEmpty(token))
             return Unauthorized("Failed to generate token.");
 
-        return Ok(new { user.Id, user.Username, user.Email });
+        return Ok(new { 
+            token = token,
+            username = user.Username,
+            email = user.Email
+        });
+    }
+
+    [HttpPost("google")]
+    public async Task<IActionResult> GoogleAuth([FromBody] GoogleAuthDto dto)
+    {
+        var user = await _userService.AuthenticateGoogleUserAsync(dto.IdToken);
+        if (user == null)
+            return Unauthorized("Invalid Google token.");
+
+        var token = _userService.GenerateJwtToken(user);
+        return Ok(new { 
+            token = token,
+            username = user.Username,
+            email = user.Email
+        });
     }
 
     [Authorize]

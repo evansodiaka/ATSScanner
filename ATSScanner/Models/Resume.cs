@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ATSScanner.Models
 {
@@ -15,7 +16,12 @@ namespace ATSScanner.Models
 
         public DateTime UploadDate { get; set; }
 
-        // Navigation property
+        [Required]
+        public int UserId { get; set; }
+
+        // Navigation properties
+        [ForeignKey("UserId")]
+        public User User { get; set; }
         public ResumeAnalysis Analysis { get; set; }
     }
 }

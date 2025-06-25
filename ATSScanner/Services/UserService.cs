@@ -2,12 +2,12 @@
 using ATSScanner.Models;
 using ATSScanner.Data;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Cryptography;
-using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using BCrypt.Net;
+using System.Text;
 
 public class UserService
 {
@@ -27,9 +27,12 @@ public class UserService
 
     public string HashPassword(string password)
     {
-        using var sha256 = SHA256.Create();
-        var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-        return Convert.ToBase64String(bytes);
+        return BCrypt.Net.BCrypt.HashPassword(password, BCrypt.Net.BCrypt.GenerateSalt(12));
+    }
+
+    public bool VerifyPassword(string password, string hashedPassword)
+    {
+        return BCrypt.Net.BCrypt.Verify(password, hashedPassword);
     }
 
     public async Task<User> RegisterUserAsync(UserRegisterDto dto)
@@ -57,13 +60,11 @@ public class UserService
         if (user == null)
             return null;
 
-        var hashed = HashPassword(password);
-        if (user.PasswordHash != hashed)
+        if (!VerifyPassword(password, user.PasswordHash))
             return null;
 
         return user;
     }
-
 
     public string GenerateJwtToken(User user)
     {
@@ -73,10 +74,10 @@ public class UserService
 
         var claims = new[]
         {
-        new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-        new Claim(JwtRegisteredClaimNames.UniqueName, user.Username),
-        new Claim(JwtRegisteredClaimNames.Email, user.Email)
-    };
+            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new Claim(JwtRegisteredClaimNames.UniqueName, user.Username),
+            new Claim(JwtRegisteredClaimNames.Email, user.Email)
+        };
 
         var token = new JwtSecurityToken(
             issuer: jwtSettings["Issuer"],
@@ -89,4 +90,49 @@ public class UserService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
+    public async Task<User> AuthenticateGoogleUserAsync(string idToken)
+    {
+        try
+        {
+            // Verify Google ID token with Google's servers
+            using var httpClient = new HttpClient();
+            var response = await httpClient.GetAsync($"https://oauth2.googleapis.com/tokeninfo?id_token={idToken}");
+            
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            var payload = await response.Content.ReadAsStringAsync();
+            var googleUser = System.Text.Json.JsonSerializer.Deserialize<GoogleTokenPayload>(payload);
+
+            if (googleUser?.email == null)
+                return null;
+
+            // Find existing user or create new one
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == googleUser.email);
+            if (user == null)
+            {
+                user = new User
+                {
+                    Username = googleUser.name ?? googleUser.email.Split('@')[0],
+                    Email = googleUser.email,
+                    PasswordHash = HashPassword(Guid.NewGuid().ToString()) // Random password for Google users
+                };
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+            }
+
+            return user;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+}
+
+public class GoogleTokenPayload
+{
+    public string email { get; set; }
+    public string name { get; set; }
+    public string picture { get; set; }
 }

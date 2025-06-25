@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.Collections.Generic;
 
 namespace ATSScanner.Models
 {
@@ -20,6 +21,7 @@ namespace ATSScanner.Models
 
         public DateTime DateCreated { get; set; } = DateTime.UtcNow;
 
-        
+        // Navigation property
+        public ICollection<Resume> Resumes { get; set; } = new List<Resume>();
     }
 } 

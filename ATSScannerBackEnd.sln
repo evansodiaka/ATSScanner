@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.10.34916.146
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ATSScanner", "ATSScanner\ATSScanner.csproj", "{47143F61-970E-4D29-8EF6-572C95102E9F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ATSScannerBackEnd", "ATSScanner\ATSScannerBackEnd.csproj", "{47143F61-970E-4D29-8EF6-572C95102E9F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
