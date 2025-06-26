@@ -42,4 +42,4 @@ export interface ResumeAnalysis {
   score: number;
   feedback: string;
   // Add other analysis properties as needed
-} 
+}

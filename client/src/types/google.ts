@@ -6,7 +6,10 @@ declare global {
         id: {
           initialize: (config: GoogleInitConfig) => void;
           prompt: () => void;
-          renderButton: (element: HTMLElement, config: GoogleButtonConfig) => void;
+          renderButton: (
+            element: HTMLElement,
+            config: GoogleButtonConfig,
+          ) => void;
         };
       };
     };
@@ -16,13 +19,16 @@ declare global {
 interface GoogleInitConfig {
   client_id: string;
   callback: (response: GoogleCredentialResponse) => void;
+  auto_select?: boolean;
+  cancel_on_tap_outside?: boolean;
+  use_fedcm_for_prompt?: boolean;
 }
 
 interface GoogleButtonConfig {
-  theme?: 'outline' | 'filled_blue' | 'filled_black';
-  size?: 'large' | 'medium' | 'small';
-  text?: 'sign_in_with' | 'sign_up_with' | 'continue_with' | 'sign_in';
-  shape?: 'rectangular' | 'pill' | 'circle' | 'square';
+  theme?: "outline" | "filled_blue" | "filled_black";
+  size?: "large" | "medium" | "small";
+  text?: "sign_in_with" | "sign_up_with" | "continue_with" | "sign_in";
+  shape?: "rectangular" | "pill" | "circle" | "square";
   width?: number;
 }
 
@@ -31,4 +37,4 @@ interface GoogleCredentialResponse {
   select_by?: string;
 }
 
-export type { GoogleCredentialResponse, GoogleInitConfig, GoogleButtonConfig }; 
+export type { GoogleCredentialResponse, GoogleInitConfig, GoogleButtonConfig };

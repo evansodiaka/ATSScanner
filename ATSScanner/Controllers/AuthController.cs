@@ -46,16 +46,39 @@ public class AuthController : ControllerBase
     [HttpPost("google")]
     public async Task<IActionResult> GoogleAuth([FromBody] GoogleAuthDto dto)
     {
-        var user = await _userService.AuthenticateGoogleUserAsync(dto.IdToken);
-        if (user == null)
-            return Unauthorized("Invalid Google token.");
+        try
+        {
+            Console.WriteLine($"Received Google auth request with token: {dto.IdToken?.Substring(0, 50)}...");
+            
+            // Check for null or empty ID token
+            if (string.IsNullOrEmpty(dto.IdToken))
+            {
+                Console.WriteLine("Google authentication failed - ID token is null or empty");
+                return BadRequest("ID token is required.");
+            }
+            
+            var user = await _userService.AuthenticateGoogleUserAsync(dto.IdToken);
+            if (user == null)
+            {
+                Console.WriteLine("Google authentication failed - user is null");
+                return Unauthorized("Invalid Google token.");
+            }
 
-        var token = _userService.GenerateJwtToken(user);
-        return Ok(new { 
-            token = token,
-            username = user.Username,
-            email = user.Email
-        });
+            var token = _userService.GenerateJwtToken(user);
+            Console.WriteLine($"Generated JWT token for user: {user.Username}");
+            
+            return Ok(new { 
+                token = token,
+                username = user.Username,
+                email = user.Email
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Google auth error: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return StatusCode(500, new { error = ex.Message });
+        }
     }
 
     [Authorize]
