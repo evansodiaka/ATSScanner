@@ -1,5 +1,5 @@
 import axios, { AxiosResponse } from "axios";
-import { User, AuthResponse, Resume, ResumeAnalysis } from "../types/user";
+import { User, AuthResponse } from "../types/user";
 
 const API_URL = "https://localhost:7291/api/auth";
 
@@ -13,9 +13,35 @@ interface AuthService {
   logout(): void;
   getCurrentUser(): User | null;
   googleAuth(idToken: string): Promise<AuthResponse>;
+  storeUserWithExpiration(userData: User): void;
+  updateActivity(): void;
+  clearSession(): void; // Helper for testing
 }
 
+const SESSION_TIMEOUT = 60 * 60 * 1000; // 1 hour in milliseconds
+
 const authService: AuthService = {
+  // Helper method to store user with expiration
+  storeUserWithExpiration(userData: User): void {
+    const userWithExpiration = {
+      ...userData,
+      expiresAt: Date.now() + SESSION_TIMEOUT,
+      lastActivity: Date.now(),
+    };
+    localStorage.setItem("user", JSON.stringify(userWithExpiration));
+  },
+
+  // Update last activity time
+  updateActivity(): void {
+    const user = localStorage.getItem("user");
+    if (user) {
+      const userData = JSON.parse(user);
+      userData.lastActivity = Date.now();
+      userData.expiresAt = Date.now() + SESSION_TIMEOUT;
+      localStorage.setItem("user", JSON.stringify(userData));
+    }
+  },
+
   async register(
     username: string,
     email: string,
@@ -33,7 +59,12 @@ const authService: AuthService = {
       );
       console.log("Registration response:", response.data);
       if (response.data.token) {
-        localStorage.setItem("user", JSON.stringify(response.data));
+        const userData: User = {
+          token: response.data.token,
+          username: response.data.username,
+          email: response.data.email,
+        };
+        this.storeUserWithExpiration(userData);
       }
       return response.data;
     } catch (error) {
@@ -70,7 +101,7 @@ const authService: AuthService = {
           email: response.data.email,
         };
         console.log("Storing user data:", userData);
-        localStorage.setItem("user", JSON.stringify(userData));
+        this.storeUserWithExpiration(userData);
       } else {
         console.error("No token in response:", response.data);
         throw new Error("No authentication token received");
@@ -94,7 +125,37 @@ const authService: AuthService = {
   getCurrentUser(): User | null {
     const user = localStorage.getItem("user");
     console.log("Current user from storage:", user);
-    return user ? JSON.parse(user) : null;
+    
+    if (!user) {
+      return null;
+    }
+
+    try {
+      const userData = JSON.parse(user);
+      
+      // Check if session has expired
+      if (userData.expiresAt && Date.now() > userData.expiresAt) {
+        console.log("Session expired, logging out");
+        this.logout();
+        return null;
+      }
+
+      // Update activity if session is still valid
+      if (userData.expiresAt) {
+        this.updateActivity();
+      }
+
+      // Return user data without expiration fields
+      return {
+        token: userData.token,
+        username: userData.username,
+        email: userData.email,
+      };
+    } catch (error) {
+      console.error("Error parsing user data:", error);
+      this.logout();
+      return null;
+    }
   },
 
   async googleAuth(idToken: string): Promise<AuthResponse> {
@@ -112,7 +173,7 @@ const authService: AuthService = {
           username: response.data.username,
           email: response.data.email,
         };
-        localStorage.setItem("user", JSON.stringify(userData));
+        this.storeUserWithExpiration(userData);
       }
 
       return response.data;
@@ -120,6 +181,11 @@ const authService: AuthService = {
       console.error("Google auth error:", error);
       throw error;
     }
+  },
+
+  clearSession(): void {
+    localStorage.removeItem("user");
+    console.log("Session cleared");
   },
 };
 

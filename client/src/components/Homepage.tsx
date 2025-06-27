@@ -1,9 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  MDBContainer,
-  MDBBtn,
-} from "mdb-react-ui-kit";
+import { MDBContainer, MDBBtn } from "mdb-react-ui-kit";
 
 const Homepage: React.FC = () => {
   const navigate = useNavigate();
@@ -17,18 +14,19 @@ const Homepage: React.FC = () => {
   };
 
   return (
-    <div
+    <MDBContainer
+      className="p-4 d-flex flex-column align-items-center w-100 text-center"
       style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
+        maxWidth: 800,
+        marginTop: 64,
+        marginBottom: 32,
+        minHeight: "calc(100vh - 64px)",
         justifyContent: "center",
+        alignItems: "center",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
-      <MDBContainer
-        className="p-4 d-flex flex-column align-items-center w-100 text-center"
-        style={{ maxWidth: 800, marginTop: 64, marginBottom: 32 }}
-      >
         {/* Main Headline */}
         <h1
           style={{
@@ -40,7 +38,8 @@ const Homepage: React.FC = () => {
             textShadow: "0 2px 4px rgba(0,0,0,0.3)",
           }}
         >
-          Resumes That Beat the Bots.<br />
+          Resumes That Beat the Bots.
+          <br />
           Land the Interview.
         </h1>
 
@@ -55,7 +54,9 @@ const Homepage: React.FC = () => {
             maxWidth: "600px",
           }}
         >
-          Resumetrics helps you create tailored, ATS-optimized resumes that stand out in today's automated hiring systems — so your skills get seen, and you get the interview.
+          Resumetrics helps you create tailored, ATS-optimized resumes that
+          stand out in today's automated hiring systems — so your skills get
+          seen, and you get the interview.
         </p>
 
         {/* Call to Action Buttons */}
@@ -80,12 +81,14 @@ const Homepage: React.FC = () => {
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = "#45a049";
               e.currentTarget.style.transform = "translateY(-2px)";
-              e.currentTarget.style.boxShadow = "0 6px 20px rgba(76, 175, 80, 0.4)";
+              e.currentTarget.style.boxShadow =
+                "0 6px 20px rgba(76, 175, 80, 0.4)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = "#4CAF50";
               e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "0 4px 15px rgba(76, 175, 80, 0.3)";
+              e.currentTarget.style.boxShadow =
+                "0 4px 15px rgba(76, 175, 80, 0.3)";
             }}
           >
             Get Started for Free
@@ -133,8 +136,7 @@ const Homepage: React.FC = () => {
           No credit card required • Free forever plan available
         </p>
       </MDBContainer>
-    </div>
   );
 };
 
-export default Homepage; 
+export default Homepage;

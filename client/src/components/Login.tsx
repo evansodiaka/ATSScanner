@@ -17,10 +17,11 @@ import {
 
 const Login: React.FC = () => {
   const [justifyActive, setJustifyActive] = useState<"tab1" | "tab2">("tab1");
-  
+
   // Password visibility state
   const [showLoginPassword, setShowLoginPassword] = useState<boolean>(false);
-  const [showRegisterPassword, setShowRegisterPassword] = useState<boolean>(false);
+  const [showRegisterPassword, setShowRegisterPassword] =
+    useState<boolean>(false);
 
   // Toggle password visibility functions
   const toggleLoginPasswordVisibility = (): void => {
@@ -293,8 +294,8 @@ const Login: React.FC = () => {
 
   return (
     <div
+      className="homepage-background"
       style={{
-        minHeight: "100vh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -410,7 +411,9 @@ const Login: React.FC = () => {
                 className="text-white"
                 labelStyle={{ color: "white" }}
               />
-              <div style={{ position: "relative", maxWidth: 400, width: "100%" }}>
+              <div
+                style={{ position: "relative", maxWidth: 400, width: "100%" }}
+              >
                 <MDBInput
                   wrapperClass="mb-4"
                   label="Password"
@@ -446,7 +449,9 @@ const Login: React.FC = () => {
                     fontSize: "1.1rem",
                     zIndex: 10,
                   }}
-                  aria-label={showLoginPassword ? "Hide password" : "Show password"}
+                  aria-label={
+                    showLoginPassword ? "Hide password" : "Show password"
+                  }
                 >
                   <MDBIcon fas icon={showLoginPassword ? "eye" : "eye-slash"} />
                 </button>
@@ -604,7 +609,9 @@ const Login: React.FC = () => {
                 className="text-white"
                 labelStyle={{ color: "white" }}
               />
-              <div style={{ position: "relative", maxWidth: 400, width: "100%" }}>
+              <div
+                style={{ position: "relative", maxWidth: 400, width: "100%" }}
+              >
                 <MDBInput
                   wrapperClass="mb-4"
                   label="Password"
@@ -640,9 +647,14 @@ const Login: React.FC = () => {
                     fontSize: "1.1rem",
                     zIndex: 10,
                   }}
-                  aria-label={showRegisterPassword ? "Hide password" : "Show password"}
+                  aria-label={
+                    showRegisterPassword ? "Hide password" : "Show password"
+                  }
                 >
-                  <MDBIcon fas icon={showRegisterPassword ? "eye" : "eye-slash"} />
+                  <MDBIcon
+                    fas
+                    icon={showRegisterPassword ? "eye" : "eye-slash"}
+                  />
                 </button>
               </div>
               <div

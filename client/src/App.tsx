@@ -14,9 +14,13 @@ import {
   Container,
   Box,
   Paper,
+  ThemeProvider,
+  createTheme,
 } from "@mui/material";
 import Login from "./components/Login";
 import Homepage from "./components/Homepage";
+import UploadResume from "./components/UploadResume";
+import UploadJobDescription from "./components/UploadJobDescription";
 //import Homepage from "./components/Homepage";
 import authService from "./services/authService";
 import { User } from "./types/user";
@@ -34,16 +38,16 @@ const Home: React.FC<{ user: User | null }> = ({ user }) => {
           </Typography>
           <Box sx={{ mt: 3 }}>
             <Typography variant="body1" paragraph>
-              What would you like to do?
+              Create your personalized resume?
             </Typography>
             <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
               <Button
                 variant="contained"
                 color="primary"
                 component={Link}
-                to="/resumes"
+                to="/job-description"
               >
-                View Resumes
+                Upload Job Description
               </Button>
               <Button
                 variant="contained"
@@ -60,6 +64,20 @@ const Home: React.FC<{ user: User | null }> = ({ user }) => {
     </Container>
   );
 };
+
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#1976d2',
+    },
+    secondary: {
+      main: '#dc004e',
+    },
+  },
+  typography: {
+    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+  },
+});
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(
@@ -84,11 +102,51 @@ const App: React.FC = () => {
     return () => window.removeEventListener("storage", checkUser);
   }, []);
 
+  // Activity tracker to extend session on user interaction
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const activities = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    
+    const handleActivity = () => {
+      if (currentUser) {
+        authService.updateActivity();
+      }
+    };
+
+    // Add event listeners for user activity
+    activities.forEach(activity => {
+      document.addEventListener(activity, handleActivity, true);
+    });
+
+    // Check session expiration periodically
+    const sessionCheckInterval = setInterval(() => {
+      const user = authService.getCurrentUser();
+      if (!user && currentUser) {
+        // Session expired
+        setCurrentUser(null);
+        console.log("Session expired - user logged out");
+      }
+    }, 60000); // Check every minute
+
+    return () => {
+      // Clean up event listeners
+      activities.forEach(activity => {
+        document.removeEventListener(activity, handleActivity, true);
+      });
+      clearInterval(sessionCheckInterval);
+    };
+  }, [currentUser]);
+
   return (
-    <Router>
-            <AppBar position="static">
+    <ThemeProvider theme={theme}>
+      <Router>
+      <AppBar position="static">
         <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 600, fontFamily: 'cursive' }}>
+          <Typography
+            variant="h6"
+            sx={{ flexGrow: 1, fontWeight: 600, fontFamily: "cursive" }}
+          >
             Resumetrics.
           </Typography>
           {currentUser ? (
@@ -104,17 +162,11 @@ const App: React.FC = () => {
         </Toolbar>
       </AppBar>
 
-      <Container>
+      <Container className={currentUser ? "dashboard-container" : ""}>
         <Routes>
           <Route
             path="/"
-            element={
-              currentUser ? (
-                <Navigate to="/dashboard" />
-              ) : (
-                <Homepage />
-              )
-            }
+            element={currentUser ? <Navigate to="/dashboard" /> : <Homepage />}
           />
           <Route
             path="/login"
@@ -127,17 +179,26 @@ const App: React.FC = () => {
           <Route
             path="/dashboard"
             element={
-              currentUser ? (
-                <Home user={currentUser} />
-              ) : (
-                <Navigate to="/" />
-              )
+              currentUser ? <Home user={currentUser} /> : <Navigate to="/" />
+            }
+          />
+          <Route
+            path="/upload"
+            element={
+              currentUser ? <UploadResume /> : <Navigate to="/login" />
+            }
+          />
+          <Route
+            path="/job-description"
+            element={
+              currentUser ? <UploadJobDescription /> : <Navigate to="/login" />
             }
           />
           {/* Add more routes as needed */}
         </Routes>
       </Container>
     </Router>
+    </ThemeProvider>
   );
 };
 
