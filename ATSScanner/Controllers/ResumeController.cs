@@ -50,7 +50,12 @@ namespace ATSScanner.Controllers
         }
 
         [HttpPost("upload")]
-        public async Task<IActionResult> UploadResume(IFormFile file, [FromQuery] string industry = "General")
+        public async Task<IActionResult> UploadResume(
+            IFormFile file,
+            [FromQuery] string industry = "General",
+            [FromQuery] string? jobTitle = null,
+            [FromQuery] string? companyName = null,
+            [FromQuery] string? jobDescription = null)
         {
             try
             {
@@ -62,8 +67,8 @@ namespace ATSScanner.Controllers
                 }
 
                 // Validate file type
-                var allowedTypes = new[] { 
-                    "application/pdf", 
+                var allowedTypes = new[] {
+                    "application/pdf",
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     "text/plain"
                 };
@@ -120,7 +125,7 @@ namespace ATSScanner.Controllers
                 var atsScore = await _atsScoringService.ScoreResumeAsync(content, industry);
 
                 // Perform AI analysis
-                var aiAnalysis = await _openAIService.AnalyzeResumeAsync(content);
+                var aiAnalysis = await _openAIService.AnalyzeResumeAsync(content, jobDescription, jobTitle, companyName);
 
                 // Create analysis record
                 var analysis = new ResumeAnalysis
@@ -142,7 +147,8 @@ namespace ATSScanner.Controllers
                     aiAnalysis = new
                     {
                         score = aiAnalysis.Score,
-                        analysis = aiAnalysis.Analysis
+                        analysis = aiAnalysis.Analysis,
+                        optimizedResume = aiAnalysis.OptimizedResume
                     }
                 });
             }

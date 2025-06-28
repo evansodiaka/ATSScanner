@@ -93,12 +93,12 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseCors("AllowReactApp");
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
-app.UseCors("AllowReactApp");
 
 // Ensure database is created and migrations are applied
 using (var scope = app.Services.CreateScope())

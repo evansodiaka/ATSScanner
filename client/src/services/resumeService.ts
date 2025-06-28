@@ -10,6 +10,7 @@ export interface UploadResponse {
   aiAnalysis: {
     score: number;
     analysis: string;
+    optimizedResume: string;
   };
 }
 
@@ -34,18 +35,44 @@ export interface ResumeDetails {
 }
 
 const resumeService = {
-  async uploadResume(file: File, industry: string = "General"): Promise<UploadResponse> {
+  async uploadResume(
+    file: File, 
+    industry: string = "General",
+    jobDescription?: {
+      jobTitle?: string;
+      companyName?: string;
+      description?: string;
+    }
+  ): Promise<UploadResponse> {
     try {
       const user = authService.getCurrentUser();
+      console.log("Resume service - Current user:", user);
       if (!user?.token) {
+        console.log("Resume service - No user or token found");
         throw new Error("User not authenticated");
       }
+      console.log("Resume service - Token found, making request to:", `${API_URL}/upload`);
 
       const formData = new FormData();
       formData.append("file", file);
 
+      // Build query parameters
+      let queryParams = `industry=${encodeURIComponent(industry)}`;
+      
+      if (jobDescription) {
+        if (jobDescription.jobTitle) {
+          queryParams += `&jobTitle=${encodeURIComponent(jobDescription.jobTitle)}`;
+        }
+        if (jobDescription.companyName) {
+          queryParams += `&companyName=${encodeURIComponent(jobDescription.companyName)}`;
+        }
+        if (jobDescription.description) {
+          queryParams += `&jobDescription=${encodeURIComponent(jobDescription.description)}`;
+        }
+      }
+
       const response: AxiosResponse<UploadResponse> = await axios.post(
-        `${API_URL}/upload?industry=${encodeURIComponent(industry)}`,
+        `${API_URL}/upload?${queryParams}`,
         formData,
         {
           headers: {
