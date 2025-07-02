@@ -54,7 +54,7 @@ const Homepage: React.FC = () => {
             maxWidth: "600px",
           }}
         >
-          Resumetrics helps you create tailored, ATS-optimized resumes that
+          Resumatrix helps you create tailored, ATS-optimized resumes that
           stand out in today's automated hiring systems — so your skills get
           seen, and you get the interview.
         </p>

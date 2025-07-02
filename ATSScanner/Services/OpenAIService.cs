@@ -34,50 +34,86 @@ namespace ATSScanner.Services
                 string userPrompt;
                 if (!string.IsNullOrWhiteSpace(jobDescription))
                 {
-                    var jobInfo = $"{jobTitle ?? "this position"}";
-                    if (!string.IsNullOrWhiteSpace(companyName))
-                    {
-                        jobInfo += $" at {companyName}";
-                    }
+                    userPrompt = $@"Analyze the provided resume against the supplied job description and deliver a comprehensive, human-centric response with TWO main sections, using **bold headings** and **larger font sizes** for section titles to maximize readability.
+# **SECTION 1 – ANALYSIS**
+**(Use a large, bold font for this heading)**
+- **ATS Compatibility & Job Match Score:**  
+  (Provide a score from 0–100)
+- **Detailed Feedback:**  
+  - Compare the resume to the job requirements.  
+  - Highlight strengths and areas for improvement.
+- **Alignment Suggestions:**  
+  - List specific changes to improve match with the job description.
+  - Bold or highlight keywords, skills, or achievements to prioritize.
+- **Keywords to Add or Emphasize:**  
+  - Clearly list the most important keywords and skills from the job description that should be incorporated.
+- **Human Touch & Professionalism:**  
+  - Suggest ways to make the resume sound approachable and engaging while maintaining a professional tone.
 
-                    userPrompt = $"Analyze this resume against the provided job description and provide a comprehensive response with TWO main sections:\n\n" +
-                               $"SECTION 1 - ANALYSIS:\n" +
-                               $"1. A score from 0-100 for ATS compatibility and job match\n" +
-                               $"2. Detailed feedback comparing the resume to the job requirements\n" +
-                               $"3. Specific suggestions for improving alignment with the job description\n" +
-                               $"4. Keywords and skills that should be emphasized or added\n\n" +
-                               $"SECTION 2 - OPTIMIZED RESUME:\n" +
-                               $"Create a completely rewritten and optimized version of this resume that:\n" +
-                               $"- Targets 90%+ ATS compatibility for this specific job\n" +
-                               $"- Incorporates relevant keywords from the job description naturally\n" +
-                               $"- Maintains all factual information from the original resume\n" +
-                               $"- Uses strong action verbs and quantified achievements\n" +
-                               $"- Follows ATS-friendly formatting (clear sections, bullet points, standard headings)\n" +
-                               $"- Emphasizes skills and experiences most relevant to the job\n" +
-                               $"- Keep the content length similar to the original\n\n" +
-                               $"Please clearly separate these sections with '--- OPTIMIZED RESUME ---' as a delimiter.\n\n" +
-                               $"Job Title: {jobTitle ?? "Not specified"}\n" +
-                               $"Company: {companyName ?? "Not specified"}\n\n" +
-                               $"Job Description:\n{jobDescription}\n\n" +
-                               $"Original Resume Content:\n{content}";
+---
+
+# **SECTION 2 – OPTIMIZED RESUME**
+**(Begin this section with a large, bold title)**
+Create a rewritten, ATS-optimized, and human-centered version of the resume that:
+- Targets **90%+ ATS compatibility** for the specific job.
+- Seamlessly incorporates the top keywords and skills.
+- **Uses strong action verbs** and quantifies achievements.
+- **Presents responsibilities and accomplishments in clear bullet points**.
+- Emphasizes both technical and soft skills relevant to the role.
+- **Maintains a professional, yet personable and genuine tone**.
+- Keeps information factually accurate and similar in length to the original.
+- Uses **modern, ATS-friendly formatting**—use bold and font size increases for section headings (e.g., EXPERIENCE, EDUCATION), and bullet points within each section.
+- Please separate sections with '**--- OPTIMIZED RESUME ---**' in bold.
+
+---
+
+**Job Title:** {jobTitle ?? "Not specified"}  
+**Company:** {companyName ?? "Not specified"}  
+
+**Job Description:**  
+{jobDescription}
+
+**Original Resume Content:**  
+{content}";
                 }
                 else
                 {
-                    userPrompt = $"Analyze this resume and provide a comprehensive response with TWO main sections:\n\n" +
-                               $"SECTION 1 - ANALYSIS:\n" +
-                               $"1. A score from 0-100 for ATS compatibility\n" +
-                               $"2. Detailed feedback about the resume's strengths and areas for improvement\n" +
-                               $"3. General suggestions for improving ATS compatibility\n\n" +
-                               $"SECTION 2 - OPTIMIZED RESUME:\n" +
-                               $"Create a completely rewritten and optimized version of this resume that:\n" +
-                               $"- Targets 90%+ ATS compatibility\n" +
-                               $"- Uses industry-standard keywords and terminology\n" +
-                               $"- Maintains all factual information from the original resume\n" +
-                               $"- Uses strong action verbs and quantified achievements\n" +
-                               $"- Follows ATS-friendly formatting (clear sections, bullet points, standard headings)\n" +
-                               $"- Keep the content length similar to the original\n\n" +
-                               $"Please clearly separate these sections with '--- OPTIMIZED RESUME ---' as a delimiter.\n\n" +
-                               $"Original Resume Content:\n{content}";
+                    userPrompt = $@"Analyze the provided resume and deliver a comprehensive, human-centric response with TWO main sections, using **bold headings** and **larger font sizes** for section titles to maximize readability.
+
+# **SECTION 1 – ANALYSIS**
+**(Use a large, bold font for this heading)**
+- **ATS Compatibility Score:**  
+  (Provide a score from 0–100)
+- **Detailed Feedback:**  
+  - Analyze the resume's strengths and areas for improvement.  
+  - Highlight professional accomplishments and formatting.
+- **General Improvement Suggestions:**  
+  - List specific changes to improve ATS compatibility.
+  - Bold or highlight key areas that need attention.
+- **Keywords to Add or Emphasize:**  
+  - Suggest industry-standard keywords and skills that should be incorporated.
+- **Human Touch & Professionalism:**  
+  - Suggest ways to make the resume sound approachable and engaging while maintaining a professional tone.
+
+---
+
+# **SECTION 2 – OPTIMIZED RESUME**
+**(Begin this section with a large, bold title)**
+Create a rewritten, ATS-optimized, and human-centered version of the resume that:
+- Targets **90%+ ATS compatibility**.
+- Incorporates industry-standard keywords and terminology.
+- **Uses strong action verbs** and quantifies achievements.
+- **Presents responsibilities and accomplishments in clear bullet points**.
+- Emphasizes both technical and soft skills.
+- **Maintains a professional, yet personable and genuine tone**.
+- Keeps information factually accurate and similar in length to the original.
+- Uses **modern, ATS-friendly formatting**—use bold and font size increases for section headings (e.g., EXPERIENCE, EDUCATION), and bullet points within each section.
+- Please separate sections with '**--- OPTIMIZED RESUME ---**' in bold.
+
+---
+
+**Original Resume Content:**  
+{content}";
                 }
 
                 var messages = new List<Message>
@@ -110,8 +146,17 @@ namespace ATSScanner.Services
                 string analysis = responseText;
                 string optimizedResume = "";
                 
-                var delimiter = "--- OPTIMIZED RESUME ---";
-                var delimiterIndex = responseText.IndexOf(delimiter, StringComparison.OrdinalIgnoreCase);
+                // Try to find the bold delimiter first, then fallback to regular delimiter
+                var boldDelimiter = "**--- OPTIMIZED RESUME ---**";
+                var regularDelimiter = "--- OPTIMIZED RESUME ---";
+                var delimiterIndex = responseText.IndexOf(boldDelimiter, StringComparison.OrdinalIgnoreCase);
+                string delimiter = boldDelimiter;
+                
+                if (delimiterIndex < 0)
+                {
+                    delimiterIndex = responseText.IndexOf(regularDelimiter, StringComparison.OrdinalIgnoreCase);
+                    delimiter = regularDelimiter;
+                }
                 
                 if (delimiterIndex >= 0)
                 {

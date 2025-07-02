@@ -31,7 +31,7 @@ const Home: React.FC<{ user: User | null }> = ({ user }) => {
       <Box sx={{ mt: 4 }}>
         <Paper elevation={3} sx={{ p: 4 }}>
           <Typography variant="h4" gutterBottom>
-            Welcome to Resumetrics
+            Welcome to Resumatrix
           </Typography>
           <Typography variant="h6" gutterBottom>
             Hello, {user?.username}!
@@ -147,7 +147,12 @@ const App: React.FC = () => {
             variant="h6"
             sx={{ flexGrow: 1, fontWeight: 600, fontFamily: "cursive" }}
           >
-            Resumetrics.
+            <Link 
+              to={currentUser ? "/dashboard" : "/"} 
+              style={{ color: 'inherit', textDecoration: 'none' }}
+            >
+              Resumatrix.
+            </Link>
           </Typography>
           {currentUser ? (
             <>
