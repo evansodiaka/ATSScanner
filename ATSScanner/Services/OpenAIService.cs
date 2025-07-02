@@ -20,7 +20,7 @@ namespace ATSScanner.Services
         public OpenAIService(IConfiguration configuration, ILogger<OpenAIService> logger)
         {
             _apiKey = configuration["OpenAI:ApiKey"];
-            _model = "gpt-3.5-turbo"; // or "gpt-4" if you have access
+            _model = "gpt-4.1"; // or "gpt-4" if you have access
             _logger = logger;
         }
 
@@ -88,7 +88,23 @@ namespace ATSScanner.Services
                     
                 var chatRequest = new ChatRequest(messages, _model);
                 var response = await client.ChatEndpoint.GetCompletionAsync(chatRequest);
-                var responseText = response.Choices[0].Message.Content;
+                
+                // Handle the response content properly
+                string responseText;
+                var messageContent = response.Choices[0].Message.Content;
+                
+                if (messageContent is string str)
+                {
+                    responseText = str;
+                }
+                else if (messageContent is System.Text.Json.JsonElement jsonElement)
+                {
+                    responseText = jsonElement.GetString() ?? string.Empty;
+                }
+                else
+                {
+                    responseText = messageContent?.ToString() ?? string.Empty;
+                }
 
                 // Split the response into analysis and optimized resume sections
                 string analysis = responseText;

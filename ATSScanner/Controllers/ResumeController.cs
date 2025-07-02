@@ -52,10 +52,10 @@ namespace ATSScanner.Controllers
         [HttpPost("upload")]
         public async Task<IActionResult> UploadResume(
             IFormFile file,
-            [FromQuery] string industry = "General",
-            [FromQuery] string? jobTitle = null,
-            [FromQuery] string? companyName = null,
-            [FromQuery] string? jobDescription = null)
+            [FromForm] string industry = "General",
+            [FromForm] string? jobTitle = null,
+            [FromForm] string? companyName = null,
+            [FromForm] string? jobDescription = null)
         {
             try
             {

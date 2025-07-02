@@ -55,24 +55,22 @@ const resumeService = {
 
       const formData = new FormData();
       formData.append("file", file);
-
-      // Build query parameters
-      let queryParams = `industry=${encodeURIComponent(industry)}`;
+      formData.append("industry", industry);
       
       if (jobDescription) {
         if (jobDescription.jobTitle) {
-          queryParams += `&jobTitle=${encodeURIComponent(jobDescription.jobTitle)}`;
+          formData.append("jobTitle", jobDescription.jobTitle);
         }
         if (jobDescription.companyName) {
-          queryParams += `&companyName=${encodeURIComponent(jobDescription.companyName)}`;
+          formData.append("companyName", jobDescription.companyName);
         }
         if (jobDescription.description) {
-          queryParams += `&jobDescription=${encodeURIComponent(jobDescription.description)}`;
+          formData.append("jobDescription", jobDescription.description);
         }
       }
 
       const response: AxiosResponse<UploadResponse> = await axios.post(
-        `${API_URL}/upload?${queryParams}`,
+        `${API_URL}/upload`,
         formData,
         {
           headers: {
