@@ -1,7 +1,9 @@
 import axios, { AxiosResponse } from "axios";
 import { User, AuthResponse } from "../types/user";
 
-const API_URL = "https://localhost:7291/api/auth";
+const API_URL = process.env.NODE_ENV === 'production' 
+  ? "https://YOUR_AZURE_APP_NAME.azurewebsites.net/api/auth"
+  : "https://localhost:7291/api/auth";
 
 interface AuthService {
   register(
@@ -18,7 +20,7 @@ interface AuthService {
   clearSession(): void; // Helper for testing
 }
 
-const SESSION_TIMEOUT = 60 * 60 * 1000; // 1 hour in milliseconds
+const SESSION_TIMEOUT = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
 
 const authService: AuthService = {
   // Helper method to store user with expiration

@@ -1,5 +1,6 @@
 using ATSScanner.Data;
 using ATSScanner.Services;
+using ATSScanner.Models;
 using Microsoft.EntityFrameworkCore;
 using OpenAI;
 using Microsoft.Extensions.Configuration;
@@ -10,6 +11,12 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure global HTTP client settings for SSL resilience
+System.Net.ServicePointManager.SecurityProtocol = System.Net.SecurityProtocolType.Tls12 | System.Net.SecurityProtocolType.Tls13;
+System.Net.ServicePointManager.DefaultConnectionLimit = 50;
+System.Net.ServicePointManager.Expect100Continue = false;
+System.Net.ServicePointManager.UseNagleAlgorithm = false;
+
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -19,11 +26,13 @@ builder.Services.AddScoped<OpenAIService>();
 builder.Services.AddScoped<AtsScoringService>();
 builder.Services.AddScoped<DocumentParserService>();
 builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<PaymentService>();
+builder.Services.AddScoped<MembershipService>();
 
 
 
 
-// Add OpenAI client
+// Add OpenAI client with SSL configuration
 builder.Services.AddSingleton<OpenAIClient>(sp =>
 {
     var configuration = sp.GetRequiredService<IConfiguration>();
@@ -108,6 +117,52 @@ using (var scope = app.Services.CreateScope())
     {
         var context = services.GetRequiredService<DataContext>();
         context.Database.EnsureCreated();
+        
+        // Seed membership plans if they don't exist
+        if (!context.MembershipPlans.Any())
+        {
+            var plans = new List<MembershipPlan>
+            {
+                new MembershipPlan
+                {
+                    Name = "Free",
+                    Type = MembershipType.Free,
+                    Price = 0,
+                    ScanLimit = 3,
+                    IsActive = true,
+                    HasPrioritySupport = false,
+                    HasAdvancedAnalytics = false,
+                    HasBulkUpload = false
+                },
+                new MembershipPlan
+                {
+                    Name = "Basic",
+                    Type = MembershipType.Basic,
+                    Price = 9.99m,
+                    ScanLimit = -1, // Unlimited
+                    IsActive = true,
+                    HasPrioritySupport = false,
+                    HasAdvancedAnalytics = true,
+                    HasBulkUpload = false,
+                    StripePriceId = "price_1Rkxg0PNK7jJq4OFQHnkYH5t" // Real Stripe price ID
+                },
+                new MembershipPlan
+                {
+                    Name = "Premium",
+                    Type = MembershipType.Premium,
+                    Price = 19.99m,
+                    ScanLimit = -1, // Unlimited
+                    IsActive = true,
+                    HasPrioritySupport = true,
+                    HasAdvancedAnalytics = true,
+                    HasBulkUpload = true,
+                    StripePriceId = "price_1RkxhuPNK7jJq4OFIyglilE4" // Real Stripe price ID
+                }
+            };
+            
+            context.MembershipPlans.AddRange(plans);
+            context.SaveChanges();
+        }
     }
     catch (Exception ex)
     {

@@ -19,9 +19,16 @@ namespace ATSScanner.Models
         [Required]
         public string PasswordHash { get; set; }
 
+        public string? StripeCustomerId { get; set; }
+
+        // Scan tracking for registered users
+        public int ScanCount { get; set; } = 0;
+        public DateTime? LastScanDate { get; set; }
+
         public DateTime DateCreated { get; set; } = DateTime.UtcNow;
 
         // Navigation property
         public ICollection<Resume> Resumes { get; set; } = new List<Resume>();
+        public Membership? Membership { get; set; }
     }
 } 

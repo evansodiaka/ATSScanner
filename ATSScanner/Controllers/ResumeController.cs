@@ -8,12 +8,12 @@ using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
 
 namespace ATSScanner.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
     public class ResumeController : ControllerBase
     {
         private readonly ILogger<ResumeController> _logger;
@@ -22,6 +22,7 @@ namespace ATSScanner.Controllers
         private readonly PdfParserService _pdfParser;
         private readonly AtsScoringService _atsScoringService;
         private readonly OpenAIService _openAIService;
+        private readonly MembershipService _membershipService;
 
         public ResumeController(
             ILogger<ResumeController> logger,
@@ -29,7 +30,8 @@ namespace ATSScanner.Controllers
             DocumentParserService documentParser,
             PdfParserService pdfParser,
             AtsScoringService atsScoringService,
-            OpenAIService openAIService)
+            OpenAIService openAIService,
+            MembershipService membershipService)
         {
             _logger = logger;
             _context = context;
@@ -37,16 +39,31 @@ namespace ATSScanner.Controllers
             _pdfParser = pdfParser;
             _atsScoringService = atsScoringService;
             _openAIService = openAIService;
+            _membershipService = membershipService;
         }
 
-        private int GetCurrentUserId()
+        private int? GetCurrentUserId()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (int.TryParse(userIdClaim, out int userId))
             {
                 return userId;
             }
-            throw new UnauthorizedAccessException("User ID not found in token");
+            return null;
+        }
+
+        private string GetClientIpAddress()
+        {
+            var ipAddress = HttpContext.Connection.RemoteIpAddress;
+            if (ipAddress != null)
+            {
+                if (ipAddress.IsIPv4MappedToIPv6)
+                {
+                    ipAddress = ipAddress.MapToIPv4();
+                }
+                return ipAddress.ToString();
+            }
+            return "unknown";
         }
 
         [HttpPost("upload")]
@@ -78,6 +95,36 @@ namespace ATSScanner.Controllers
                     return BadRequest($"Unsupported file type: {file.ContentType}. Supported types are: PDF, DOCX, and TXT");
                 }
 
+                // Check if user is authenticated
+                var userId = GetCurrentUserId();
+                var clientIp = GetClientIpAddress();
+                
+                UsageLimitResult limitResult;
+                
+                if (userId.HasValue)
+                {
+                    // Registered user - check their membership limits
+                    limitResult = await _membershipService.CheckRegisteredUserLimitAsync(userId.Value);
+                }
+                else
+                {
+                    // Unregistered user - check IP-based limits
+                    limitResult = await _membershipService.CheckUnregisteredUserLimitAsync(clientIp);
+                }
+
+                if (!limitResult.CanScan)
+                {
+                    return StatusCode(429, new
+                    {
+                        error = "Scan limit exceeded",
+                        message = userId.HasValue 
+                            ? "You have reached your daily scan limit. Please upgrade your membership to continue."
+                            : "You have reached the 3 free scans limit. Please register and upgrade to continue scanning.",
+                        remainingScans = limitResult.RemainingScans,
+                        needsPayment = !limitResult.HasPaidMembership
+                    });
+                }
+
                 // Create a memory stream to avoid stream position issues
                 using var memoryStream = new MemoryStream();
                 await file.CopyToAsync(memoryStream);
@@ -106,42 +153,56 @@ namespace ATSScanner.Controllers
                     return BadRequest("No text content could be extracted from the file");
                 }
 
-                // Get current user ID
-                var userId = GetCurrentUserId();
-
-                // Create resume record
-                var resume = new Resume
-                {
-                    FileName = file.FileName,
-                    Content = content,
-                    UploadDate = DateTime.UtcNow,
-                    UserId = userId
-                };
-
-                _context.Resumes.Add(resume);
-                await _context.SaveChangesAsync();
-
                 // Perform ATS scoring
                 var atsScore = await _atsScoringService.ScoreResumeAsync(content, industry);
 
                 // Perform AI analysis
                 var aiAnalysis = await _openAIService.AnalyzeResumeAsync(content, jobDescription, jobTitle, companyName);
 
-                // Create analysis record
-                var analysis = new ResumeAnalysis
+                // Only save to database if user is registered
+                int? resumeId = null;
+                if (userId.HasValue)
                 {
-                    ResumeId = resume.Id,
-                    AtsScore = atsScore,
-                    AiScore = aiAnalysis.Score,
-                    Feedback = aiAnalysis.Analysis
-                };
+                    // Create resume record
+                    var resume = new Resume
+                    {
+                        FileName = file.FileName,
+                        Content = content,
+                        UploadDate = DateTime.UtcNow,
+                        UserId = userId.Value
+                    };
 
-                _context.ResumeAnalyses.Add(analysis);
-                await _context.SaveChangesAsync();
+                    _context.Resumes.Add(resume);
+                    await _context.SaveChangesAsync();
+
+                    // Create analysis record
+                    var analysis = new ResumeAnalysis
+                    {
+                        ResumeId = resume.Id,
+                        AtsScore = atsScore,
+                        AiScore = aiAnalysis.Score,
+                        Feedback = aiAnalysis.Analysis
+                    };
+
+                    _context.ResumeAnalyses.Add(analysis);
+                    await _context.SaveChangesAsync();
+
+                    resumeId = resume.Id;
+                }
+
+                // Record the scan
+                if (userId.HasValue)
+                {
+                    await _membershipService.RecordRegisteredScanAsync(userId.Value);
+                }
+                else
+                {
+                    await _membershipService.RecordUnregisteredScanAsync(clientIp);
+                }
 
                 return Ok(new
                 {
-                    resumeId = resume.Id,
+                    resumeId = resumeId,
                     content,
                     atsScore,
                     aiAnalysis = new
@@ -149,7 +210,10 @@ namespace ATSScanner.Controllers
                         score = aiAnalysis.Score,
                         analysis = aiAnalysis.Analysis,
                         optimizedResume = aiAnalysis.OptimizedResume
-                    }
+                    },
+                    remainingScans = limitResult.RemainingScans,
+                    hasRegisteredAccount = userId.HasValue,
+                    hasPaidMembership = limitResult.HasPaidMembership
                 });
             }
             catch (Exception ex)
@@ -159,14 +223,54 @@ namespace ATSScanner.Controllers
             }
         }
 
+        [HttpGet("usage-status")]
+        public async Task<IActionResult> GetUsageStatus()
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                var clientIp = GetClientIpAddress();
+
+                if (userId.HasValue)
+                {
+                    // Registered user
+                    var status = await _membershipService.GetUserMembershipStatusAsync(userId.Value);
+                    return Ok(status);
+                }
+                else
+                {
+                    // Unregistered user
+                    var limitResult = await _membershipService.CheckUnregisteredUserLimitAsync(clientIp);
+                    return Ok(new
+                    {
+                        hasRegisteredAccount = false,
+                        remainingScans = limitResult.RemainingScans,
+                        canScan = limitResult.CanScan,
+                        isFirstTime = limitResult.IsFirstTime
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching usage status");
+                return StatusCode(500, "Error fetching usage status");
+            }
+        }
+
         [HttpGet("my-resumes")]
+        [Authorize]
         public async Task<IActionResult> GetMyResumes()
         {
             try
             {
                 var userId = GetCurrentUserId();
+                if (!userId.HasValue)
+                {
+                    return Unauthorized();
+                }
+
                 var resumes = await _context.Resumes
-                    .Where(r => r.UserId == userId)
+                    .Where(r => r.UserId == userId.Value)
                     .Include(r => r.Analysis)
                     .OrderByDescending(r => r.UploadDate)
                     .Select(r => new
@@ -189,14 +293,20 @@ namespace ATSScanner.Controllers
         }
 
         [HttpGet("{id}")]
+        [Authorize]
         public async Task<IActionResult> GetResume(int id)
         {
             try
             {
                 var userId = GetCurrentUserId();
+                if (!userId.HasValue)
+                {
+                    return Unauthorized();
+                }
+
                 var resume = await _context.Resumes
                     .Include(r => r.Analysis)
-                    .FirstOrDefaultAsync(r => r.Id == id && r.UserId == userId);
+                    .FirstOrDefaultAsync(r => r.Id == id && r.UserId == userId.Value);
 
                 if (resume == null)
                 {

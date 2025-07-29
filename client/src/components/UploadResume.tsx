@@ -14,100 +14,110 @@ import {
   Card,
   CardContent,
   Chip,
-  IconButton,
-  Tooltip,
-  Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
-// Removed CloudUpload import to fix React child error
+import {
+  CloudUpload,
+  Login,
+  Star,
+} from "@mui/icons-material";
 import resumeService, { UploadResponse } from "../services/resumeService";
-import { useNavigate } from "react-router-dom";
+import authService from "../services/authService";
+import { useNavigate, useLocation } from "react-router-dom";
+import UsageStatus from "./UsageStatus";
+import UpgradeModal from "./UpgradeModal";
+
+// Utility function to strip triple backticks and language identifiers from AI HTML output
+function stripBackticks(html: string): string {
+  return html.replace(/```[a-z]*\n?|```/gi, '').trim();
+}
 
 const UploadResume: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [industry, setIndustry] = useState<string>("General");
   const [uploading, setUploading] = useState<boolean>(false);
   const [uploadResult, setUploadResult] = useState<UploadResponse | null>(null);
   const [error, setError] = useState<string>("");
-  const [showOptimizedView, setShowOptimizedView] = useState<boolean>(false);
   const [currentJobDescription, setCurrentJobDescription] = useState<any>(null);
-  const [copySuccess, setCopySuccess] = useState<boolean>(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [limitModalData, setLimitModalData] = useState<any>(null);
+  const [usageRefreshTrigger, setUsageRefreshTrigger] = useState(0);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Load the most recent job description on component mount
+  // Load the most recent job description and check authentication
   useEffect(() => {
-    // Check authentication status
-    const checkAuth = async () => {
-      const user = await import("../services/authService").then(module => module.default.getCurrentUser());
-      if (!user) {
-        console.log("User not authenticated, redirecting to login");
-        navigate("/login");
-        return;
+    const checkAuthAndLoadData = () => {
+      const user = authService.getCurrentUser();
+      setIsAuthenticated(!!user);
+      
+      // No need to redirect if not authenticated - anonymous users can upload
+      if (user) {
+        console.log("User authenticated:", user.username);
+      } else {
+        console.log("Anonymous user - can use 3 free scans");
       }
-      console.log("User authenticated:", user.username);
     };
 
-    checkAuth();
+    checkAuthAndLoadData();
 
-    try {
-      const savedJobs = JSON.parse(localStorage.getItem("jobDescriptions") || "[]");
-      if (savedJobs.length > 0) {
-        // Get the most recently saved job description
-        const mostRecent = savedJobs[savedJobs.length - 1];
-        setCurrentJobDescription(mostRecent);
+    // Load saved job description from localStorage
+    const savedJobDescription = localStorage.getItem('currentJobDescription');
+    if (savedJobDescription) {
+      try {
+        setCurrentJobDescription(JSON.parse(savedJobDescription));
+      } catch (error) {
+        console.error('Error parsing saved job description:', error);
+        localStorage.removeItem('currentJobDescription');
       }
-    } catch (error) {
-      console.error("Error loading job descriptions:", error);
     }
-  }, [navigate]);
 
-  const industries = [
-    "General",
-    "Technology",
-    "Healthcare",
-    "Finance",
-    "Marketing",
-    "Engineering",
-    "Education",
-    "Sales",
-    "Human Resources",
-    "Legal",
-    "Manufacturing",
-    "Retail",
-  ];
+    // Check if there's a result passed from a previous upload
+    if (location.state?.uploadResult) {
+      setUploadResult(location.state.uploadResult);
+      // Clear the state to prevent it from persisting on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const validateFile = (file: File, fileType: string) => {
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      return "File size must be less than 10MB";
+    }
+
     const allowedTypes = [
       "application/pdf",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "text/plain",
+      "text/plain"
     ];
-    
-    if (!allowedTypes.includes(file.type)) {
-      setError(`Please upload a PDF, DOCX, or TXT file only for ${fileType}.`);
-      return false;
+
+    if (!allowedTypes.includes(fileType)) {
+      return "Only PDF, DOCX, and TXT files are supported";
     }
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      setError(`File size must be less than 10MB for ${fileType}.`);
-      return false;
-    }
-
-    return true;
+    return null;
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && validateFile(file, "resume")) {
+    const validationError = file ? validateFile(file, file.type) : null;
+
+    if (validationError) {
+      setError(validationError);
+      setSelectedFile(null);
+      setUploadResult(null);
+    } else if (file) {
       setSelectedFile(file);
       setError("");
       setUploadResult(null);
-    } else if (file) {
-      setSelectedFile(null);
     }
   };
-
-
 
   const handleUpload = async () => {
     if (!selectedFile) {
@@ -133,8 +143,20 @@ const UploadResume: React.FC = () => {
       const result = await resumeService.uploadResume(selectedFile, industry, jobDescriptionData);
       
       setUploadResult(result);
+      
+      // Refresh usage status after successful upload
+      setUsageRefreshTrigger(prev => prev + 1);
+      
     } catch (error: any) {
       console.error("Upload failed:", error);
+      
+      // Handle usage limit exceeded (429 status)
+      if (error.response?.status === 429) {
+        const limitData = error.response.data;
+        setLimitModalData(limitData);
+        setShowLimitModal(true);
+        return;
+      }
       
       // Check for authentication errors
       if (error.response?.status === 401) {
@@ -145,7 +167,7 @@ const UploadResume: React.FC = () => {
         return;
       }
       
-      // Ensure we always set a string error message
+      // Handle other errors
       let errorMessage = "Failed to upload resume. Please try again.";
       
       if (error.response?.data?.message && typeof error.response.data.message === 'string') {
@@ -164,39 +186,56 @@ const UploadResume: React.FC = () => {
     setSelectedFile(null);
     setUploadResult(null);
     setError("");
-    setShowOptimizedView(false);
   };
 
   const handleViewOptimizedResume = () => {
-    setShowOptimizedView(true);
-  };
-
-  const handleBackToResults = () => {
-    setShowOptimizedView(false);
-  };
-
-  const handleCopyOptimizedResume = async () => {
-    if (uploadResult?.aiAnalysis?.optimizedResume) {
-      try {
-        await navigator.clipboard.writeText(uploadResult.aiAnalysis.optimizedResume);
-        setCopySuccess(true);
-      } catch (error) {
-        console.error("Failed to copy to clipboard:", error);
-      }
-    }
-  };
-
-  const handleCloseCopyAlert = () => {
-    setCopySuccess(false);
+    navigate("/optimized-resume", { state: { uploadResult } });
   };
 
   const handleClose = () => {
-    navigate("/dashboard");
+    navigate(isAuthenticated ? "/dashboard" : "/");
+  };
+
+  const handleLoginClick = () => {
+    navigate("/login");
+  };
+
+  const handleUpgradeClick = () => {
+    if (!isAuthenticated) {
+      // For anonymous users, redirect to registration first
+      navigate("/register", { 
+        state: { 
+          message: "Create an account to upgrade and get unlimited scans!" 
+        }
+      });
+    } else {
+      setShowUpgradeModal(true);
+    }
+  };
+
+  const handleUpgradeSuccess = () => {
+    setShowUpgradeModal(false);
+    setShowLimitModal(false);
+    setUsageRefreshTrigger(prev => prev + 1);
+    // Show success message or refresh page
+    setError("");
+  };
+
+  const handleLimitModalClose = () => {
+    setShowLimitModal(false);
+    setLimitModalData(null);
   };
 
   return (
     <Container maxWidth="md">
       <Box sx={{ mt: 4 }}>
+        {/* Usage Status Component */}
+        <UsageStatus
+          onUpgradeClick={handleUpgradeClick}
+          onLoginClick={handleLoginClick}
+          refreshTrigger={usageRefreshTrigger}
+        />
+
         <Paper elevation={3} sx={{ p: 4 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
             <Typography variant="h4">
@@ -214,32 +253,19 @@ const UploadResume: React.FC = () => {
           
           {!uploadResult ? (
             <>
-              <Typography variant="body1" paragraph>
-                Upload your resume to get ATS compatibility scoring and AI-powered feedback. 
-                Optionally upload a job description file to save it for later comparison.
-              </Typography>
-
               {error && (
-                <Alert severity="error" sx={{ mb: 3 }}>
+                <Alert severity="error" sx={{ mb: 2 }}>
                   {error}
                 </Alert>
               )}
 
               <Box sx={{ mb: 3 }}>
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Industry</InputLabel>
-                  <Select
-                    value={industry}
-                    label="Industry"
-                    onChange={(e) => setIndustry(e.target.value)}
-                  >
-                    {industries.map((ind) => (
-                      <MenuItem key={ind} value={ind}>
-                        {ind}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <Typography variant="body1" color="textSecondary" gutterBottom>
+                  {isAuthenticated 
+                    ? "Upload your resume to get AI-powered analysis and optimization suggestions."
+                    : "Get 3 free resume scans! No account required to start."
+                  }
+                </Typography>
 
                 <input
                   accept=".pdf,.docx,.txt"
@@ -252,101 +278,113 @@ const UploadResume: React.FC = () => {
                   <Button
                     variant="outlined"
                     component="span"
+                    startIcon={<CloudUpload />}
+                    sx={{ mt: 2, mb: 2 }}
+                  >
+                    Choose Resume File
+                  </Button>
+                </label>
+                
+                {selectedFile && (
+                  <Typography variant="body2" sx={{ mt: 1, color: 'success.main' }}>
+                    Selected: {selectedFile.name}
+                  </Typography>
+                )}
+              </Box>
+
+              <Box sx={{ mb: 3 }}>
+                <FormControl fullWidth variant="outlined">
+                  <InputLabel>Industry</InputLabel>
+                  <Select
+                    value={industry}
+                    onChange={(e) => setIndustry(e.target.value)}
+                    label="Industry"
+                  >
+                    <MenuItem value="General">General</MenuItem>
+                    <MenuItem value="Tech">Technology</MenuItem>
+                    <MenuItem value="Healthcare">Healthcare</MenuItem>
+                    <MenuItem value="Finance">Finance</MenuItem>
+                    <MenuItem value="Marketing">Marketing</MenuItem>
+                    <MenuItem value="Education">Education</MenuItem>
+                    <MenuItem value="Manufacturing">Manufacturing</MenuItem>
+                    <MenuItem value="Retail">Retail</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+
+              {/* Job Description Section */}
+              {currentJobDescription ? (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="h6" sx={{ mb: 2 }}>
+                    Job Description Added ✓
+                  </Typography>
+                  <Card variant="outlined" sx={{ mb: 2 }}>
+                    <CardContent>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                        <Box>
+                          <Typography variant="subtitle1" fontWeight="bold">
+                            {currentJobDescription.jobTitle || 'Job Title Not Specified'}
+                          </Typography>
+                          <Typography variant="body2" color="textSecondary">
+                            {currentJobDescription.companyName || 'Company Not Specified'}
+                          </Typography>
+                        </Box>
+                        <Chip 
+                          label="Targeted Analysis" 
+                          color="primary" 
+                          size="small"
+                        />
+                      </Box>
+                      <Typography variant="body2" sx={{ mt: 1 }}>
+                        {currentJobDescription.description 
+                          ? `${currentJobDescription.description.substring(0, 200)}...`
+                          : 'Description available'
+                        }
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                  <Button
+                    variant="text"
+                    size="small"
+                    onClick={() => navigate("/job-description")}
+                    sx={{ mb: 2 }}
+                  >
+                    📝 Edit Job Description
+                  </Button>
+                </Box>
+              ) : (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="h6" sx={{ mb: 2 }}>
+                    No Job Description Available
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                    Add a job description to get more targeted resume analysis and recommendations.
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    onClick={() => navigate("/job-description")}
                     fullWidth
                     sx={{ mb: 2 }}
                   >
-                    📁 Choose Resume File
+                    📝 Add Job Description
                   </Button>
-                </label>
+                </Box>
+              )}
 
-                {selectedFile && (
-                  <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-                    Selected resume: {selectedFile.name || "Unknown file"}
-                  </Typography>
-                )}
+              <Button
+                variant="contained"
+                onClick={handleUpload}
+                disabled={!selectedFile || uploading}
+                fullWidth
+                size="large"
+                sx={{ mt: 2 }}
+                startIcon={uploading ? <CircularProgress size={20} color="inherit" /> : <CloudUpload />}
+              >
+                {uploading ? "Analyzing Resume..." : "Upload and Analyze Resume"}
+              </Button>
 
-                {/* Current Job Description Display */}
-                {currentJobDescription && (
-                  <Box sx={{ mt: 3, mb: 2 }}>
-                    <Typography variant="h6" sx={{ mb: 2 }}>
-                      Job Description to Analyze Against
-                    </Typography>
-                    <Card variant="outlined" sx={{ mb: 2 }}>
-                      <CardContent>
-                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1 }}>
-                          <Typography variant="h6" component="h3">
-                            {currentJobDescription.jobTitle}
-                          </Typography>
-                          <Chip 
-                            label={currentJobDescription.source === "file_upload" ? "File Upload" : "Manual Input"} 
-                            size="small" 
-                            variant="outlined"
-                          />
-                        </Box>
-                        {currentJobDescription.companyName && (
-                          <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
-                            Company: {currentJobDescription.companyName}
-                          </Typography>
-                        )}
-                        <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
-                          Saved: {new Date(currentJobDescription.savedAt).toLocaleDateString()}
-                        </Typography>
-                        <Typography variant="body2" sx={{ 
-                          maxHeight: "100px", 
-                          overflow: "auto", 
-                          backgroundColor: "#f5f5f5", 
-                          p: 1, 
-                          borderRadius: 1 
-                        }}>
-                          {currentJobDescription.description.substring(0, 200)}
-                          {currentJobDescription.description.length > 200 && "..."}
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                    <Button
-                      variant="text"
-                      size="small"
-                      onClick={() => navigate("/job-description")}
-                      sx={{ mb: 2 }}
-                    >
-                      📝 Add New Job Description
-                    </Button>
-                  </Box>
-                )}
-
-                {!currentJobDescription && (
-                  <Box sx={{ mt: 3, mb: 2 }}>
-                    <Typography variant="h6" sx={{ mb: 2 }}>
-                      No Job Description Available
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-                      Add a job description to get more targeted resume analysis and recommendations.
-                    </Typography>
-                    <Button
-                      variant="outlined"
-                      onClick={() => navigate("/job-description")}
-                      fullWidth
-                      sx={{ mb: 2 }}
-                    >
-                      📝 Add Job Description
-                    </Button>
-                  </Box>
-                )}
-
-                <Button
-                  variant="contained"
-                  onClick={handleUpload}
-                  disabled={!selectedFile || uploading}
-                  fullWidth
-                  sx={{ mt: 2 }}
-                  startIcon={uploading ? <CircularProgress size={20} color="inherit" /> : null}
-                >
-                  {uploading ? "Analyzing Resume..." : "Upload and Analyze Resume"}
-                </Button>
-              </Box>
-
-              <Typography variant="caption" color="textSecondary">
-                Supported formats for both files: PDF, DOCX, TXT (Max size: 10MB each)
+              <Typography variant="caption" color="textSecondary" sx={{ display: 'block', textAlign: 'center', mt: 2 }}>
+                Supported formats: PDF, DOCX, TXT (Max size: 10MB)
               </Typography>
             </>
           ) : (
@@ -364,11 +402,16 @@ const UploadResume: React.FC = () => {
 
               <Box sx={{ mb: 3 }}>
                 <Typography variant="body1" sx={{ mb: 1 }}>
-                  <strong>ATS Score:</strong> {uploadResult.atsScore || 0}/100
+                  <strong>ATS Score:</strong> {uploadResult.aiAnalysis?.score || 0}/100
                 </Typography>
-                <Typography variant="body1" sx={{ mb: 1 }}>
-                  <strong>AI Score:</strong> {uploadResult.aiAnalysis?.score || 0}/100
-                </Typography>
+                {uploadResult.remainingScans !== undefined && (
+                  <Typography variant="body2" color="text.secondary">
+                    {uploadResult.remainingScans === -1 
+                      ? "Unlimited scans remaining"
+                      : `${uploadResult.remainingScans} scans remaining today`
+                    }
+                  </Typography>
+                )}
               </Box>
 
               <Typography variant="h6" gutterBottom>
@@ -378,12 +421,16 @@ const UploadResume: React.FC = () => {
                 elevation={1} 
                 sx={{ p: 2, backgroundColor: "#f5f5f5", mb: 3 }}
               >
-                <Typography variant="body2" style={{ whiteSpace: "pre-wrap" }}>
-                  {uploadResult.aiAnalysis?.analysis || "No analysis available"}
-                </Typography>
+                <div
+                  className="analysis-section"
+                  style={{ whiteSpace: "pre-wrap" }}
+                  dangerouslySetInnerHTML={{ 
+                    __html: stripBackticks(uploadResult.aiAnalysis?.analysis || "No analysis available") 
+                  }}
+                />
               </Paper>
 
-              <Box sx={{ display: "flex", gap: 2 }}>
+              <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
                 <Button
                   variant="contained"
                   onClick={handleNewUpload}
@@ -396,191 +443,69 @@ const UploadResume: React.FC = () => {
                 >
                   View Optimized Resume
                 </Button>
+                {!uploadResult.hasPaidMembership && uploadResult.remainingScans !== undefined && uploadResult.remainingScans <= 1 && (
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    onClick={handleUpgradeClick}
+                    startIcon={<Star />}
+                  >
+                    Upgrade for Unlimited
+                  </Button>
+                )}
               </Box>
-                          </Box>
-            )}
+            </Box>
+          )}
         </Paper>
 
-        {/* Optimized Resume View Section */}
-        {showOptimizedView && uploadResult && (
-          <Paper elevation={3} sx={{ p: 4, mt: 3 }}>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-              <Typography variant="h4">
-                Optimized Resume Results
-              </Typography>
-              <Button 
-                onClick={handleBackToResults}
-                variant="text"
-                size="small"
-                sx={{ minWidth: 'auto', p: 1 }}
-              >
-                ← Back to Analysis
-              </Button>
-            </Box>
-
-            <Typography variant="body1" sx={{ mb: 3 }}>
-              Your resume has been analyzed and optimized based on ATS requirements and AI recommendations.
+        {/* Usage Limit Modal */}
+        <Dialog open={showLimitModal} onClose={handleLimitModalClose} maxWidth="sm" fullWidth>
+          <DialogTitle>
+            <Typography variant="h5" component="h2">
+              {limitModalData?.needsPayment ? "Upgrade Required" : "Scan Limit Reached"}
             </Typography>
-
-            {/* Score Summary */}
-            <Box sx={{ mb: 4 }}>
-              <Typography variant="h5" gutterBottom>
-                Performance Scores
-              </Typography>
-              <Box sx={{ display: "flex", gap: 4, mb: 2 }}>
-                <Paper elevation={1} sx={{ p: 2, flex: 1, textAlign: "center", backgroundColor: "#e3f2fd" }}>
-                  <Typography variant="h3" color="primary" sx={{ fontWeight: "bold" }}>
-                    {uploadResult.atsScore || 0}
-                  </Typography>
-                  <Typography variant="subtitle1">
-                    ATS Compatibility Score
-                  </Typography>
-                </Paper>
-                <Paper elevation={1} sx={{ p: 2, flex: 1, textAlign: "center", backgroundColor: "#f3e5f5" }}>
-                  <Typography variant="h3" color="secondary" sx={{ fontWeight: "bold" }}>
-                    {uploadResult.aiAnalysis?.score || 0}
-                  </Typography>
-                  <Typography variant="subtitle1">
-                    AI Quality Score
-                  </Typography>
-                </Paper>
-              </Box>
-            </Box>
-
-            {/* Detailed Analysis */}
-            <Box sx={{ mb: 4 }}>
-              <Typography variant="h5" gutterBottom>
-                Detailed AI Analysis & Recommendations
-              </Typography>
-              <Paper 
-                elevation={1} 
-                sx={{ p: 3, backgroundColor: "#f8f9fa", border: "1px solid #e0e0e0" }}
+          </DialogTitle>
+          <DialogContent>
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              {limitModalData?.message || "You've reached your scan limit."}
+            </Alert>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              {isAuthenticated 
+                ? "Upgrade to a paid plan to get unlimited resume scans and premium features."
+                : "Sign up for an account and upgrade to continue scanning resumes."
+              }
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleLimitModalClose}>
+              Cancel
+            </Button>
+            {!isAuthenticated && (
+              <Button 
+                variant="outlined" 
+                onClick={handleLoginClick}
+                startIcon={<Login />}
               >
-                <Typography variant="body1" style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
-                  {uploadResult.aiAnalysis?.analysis || "No detailed analysis available"}
-                </Typography>
-              </Paper>
-            </Box>
-
-            {/* AI-Generated Optimized Resume */}
-            {uploadResult.aiAnalysis?.optimizedResume && (
-              <Box sx={{ mb: 4 }}>
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                  <Typography variant="h5">
-                    🤖 AI-Generated Optimized Resume (90% ATS Target)
-                  </Typography>
-                  <Tooltip title="Copy optimized resume to clipboard">
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={handleCopyOptimizedResume}
-                      sx={{ minWidth: "auto", px: 2 }}
-                    >
-                      📋 Copy
-                    </Button>
-                  </Tooltip>
-                </Box>
-                <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-                  This is a completely rewritten version of your resume, optimized by AI to achieve 90%+ ATS compatibility for the target job.
-                </Typography>
-                <Paper 
-                  elevation={2} 
-                  sx={{ 
-                    p: 3, 
-                    backgroundColor: "#f0f8ff", 
-                    border: "2px solid #2196f3",
-                    maxHeight: "500px",
-                    overflow: "auto",
-                    mb: 2
-                  }}
-                >
-                  <Typography 
-                    variant="body2" 
-                    component="pre" 
-                    sx={{ 
-                      fontFamily: "Arial, sans-serif", 
-                      whiteSpace: "pre-wrap", 
-                      lineHeight: 1.5,
-                      fontSize: "0.9rem"
-                    }}
-                  >
-                    {uploadResult.aiAnalysis.optimizedResume}
-                  </Typography>
-                </Paper>
-                <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
-                  <Alert severity="success" sx={{ flex: 1 }}>
-                    <strong>🎯 Target Achieved:</strong> This resume is optimized for 90%+ ATS compatibility
-                  </Alert>
-                  <Alert severity="info" sx={{ flex: 1 }}>
-                    <strong>⚠️ Please verify:</strong> Review all information for accuracy before using
-                  </Alert>
-                </Box>
-              </Box>
+                Sign In
+              </Button>
             )}
+            <Button 
+              variant="contained" 
+              onClick={handleUpgradeClick}
+              startIcon={<Star />}
+            >
+              {isAuthenticated ? "Upgrade Now" : "Sign Up & Upgrade"}
+            </Button>
+          </DialogActions>
+        </Dialog>
 
-            {/* Original Resume Content */}
-            <Box sx={{ mb: 4 }}>
-              <Typography variant="h5" gutterBottom>
-                📄 Your Original Resume
-              </Typography>
-              <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-                Your original resume content for reference and comparison.
-              </Typography>
-              <Paper 
-                elevation={1} 
-                sx={{ 
-                  p: 3, 
-                  backgroundColor: "#ffffff", 
-                  border: "1px solid #e0e0e0",
-                  maxHeight: "400px",
-                  overflow: "auto"
-                }}
-              >
-                <Typography 
-                  variant="body2" 
-                  component="pre" 
-                  sx={{ 
-                    fontFamily: "monospace", 
-                    whiteSpace: "pre-wrap", 
-                    lineHeight: 1.4,
-                    fontSize: "0.85rem",
-                    color: "#666"
-                  }}
-                >
-                  {uploadResult.content || "Resume content not available"}
-                </Typography>
-              </Paper>
-            </Box>
-
-            {/* Action Buttons */}
-            <Box sx={{ display: "flex", gap: 2, justifyContent: "center" }}>
-              <Button
-                variant="contained"
-                onClick={handleNewUpload}
-                sx={{ px: 4 }}
-              >
-                Upload New Resume
-              </Button>
-              <Button
-                variant="outlined"
-                onClick={handleBackToResults}
-                sx={{ px: 4 }}
-              >
-                Back to Analysis
-              </Button>
-            </Box>
-          </Paper>
-        )}
+        {/* Upgrade Modal */}
+        <UpgradeModal
+          open={showUpgradeModal}
+          onClose={() => setShowUpgradeModal(false)}
+          onUpgradeSuccess={handleUpgradeSuccess}
+        />
       </Box>
-
-      {/* Copy Success Snackbar */}
-      <Snackbar
-        open={copySuccess}
-        autoHideDuration={3000}
-        onClose={handleCloseCopyAlert}
-        message="✅ Optimized resume copied to clipboard!"
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      />
     </Container>
   );
 };

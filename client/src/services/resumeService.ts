@@ -1,7 +1,9 @@
 import axios, { AxiosResponse } from "axios";
 import authService from "./authService";
 
-const API_URL = "https://localhost:7291/api/resume";
+const API_URL = process.env.NODE_ENV === 'production' 
+  ? "https://YOUR_AZURE_APP_NAME.azurewebsites.net/api/resume"
+  : "https://localhost:7291/api/resume";
 
 export interface UploadResponse {
   resumeId: number;
@@ -12,6 +14,9 @@ export interface UploadResponse {
     analysis: string;
     optimizedResume: string;
   };
+  remainingScans: number;
+  hasRegisteredAccount: boolean;
+  hasPaidMembership: boolean;
 }
 
 export interface ResumeItem {
@@ -47,12 +52,7 @@ const resumeService = {
     try {
       const user = authService.getCurrentUser();
       console.log("Resume service - Current user:", user);
-      if (!user?.token) {
-        console.log("Resume service - No user or token found");
-        throw new Error("User not authenticated");
-      }
-      console.log("Resume service - Token found, making request to:", `${API_URL}/upload`);
-
+      
       const formData = new FormData();
       formData.append("file", file);
       formData.append("industry", industry);
@@ -69,15 +69,22 @@ const resumeService = {
         }
       }
 
+      // Prepare headers - include auth token if user is authenticated
+      const headers: any = {
+        "Content-Type": "multipart/form-data",
+      };
+      
+      if (user?.token) {
+        headers.Authorization = `Bearer ${user.token}`;
+        console.log("Resume service - Authenticated user, making request to:", `${API_URL}/upload`);
+      } else {
+        console.log("Resume service - Anonymous user, making request to:", `${API_URL}/upload`);
+      }
+
       const response: AxiosResponse<UploadResponse> = await axios.post(
         `${API_URL}/upload`,
         formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-            Authorization: `Bearer ${user.token}`,
-          },
-        }
+        { headers }
       );
 
       return response.data;

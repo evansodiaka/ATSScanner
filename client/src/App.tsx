@@ -21,6 +21,7 @@ import Login from "./components/Login";
 import Homepage from "./components/Homepage";
 import UploadResume from "./components/UploadResume";
 import UploadJobDescription from "./components/UploadJobDescription";
+import OptimizedResume from "./components/OptimizedResume";
 //import Homepage from "./components/Homepage";
 import authService from "./services/authService";
 import { User } from "./types/user";
@@ -189,15 +190,19 @@ const App: React.FC = () => {
           />
           <Route
             path="/upload"
-            element={
-              currentUser ? <UploadResume /> : <Navigate to="/login" />
-            }
+            element={<UploadResume />}
+          />
+          <Route
+            path="/upload-resume"
+            element={<UploadResume />}
+          />
+          <Route
+            path="/optimized-resume"
+            element={<OptimizedResume />}
           />
           <Route
             path="/job-description"
-            element={
-              currentUser ? <UploadJobDescription /> : <Navigate to="/login" />
-            }
+            element={<UploadJobDescription />}
           />
           {/* Add more routes as needed */}
         </Routes>
