@@ -14,6 +14,24 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Add CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp",
+        policy =>
+        {
+            policy.WithOrigins(
+                "http://localhost:3000",  // Local development
+                "https://localhost:3000", // Local development HTTPS
+                "https://atsscanner-frontend.azurestaticapps.net", // Production frontend
+                "https://atsscanner-personal-server.azurewebsites.net" // Allow self-requests
+            )
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
+        });
+});
 builder.Services.AddScoped<PdfParserService>();
 builder.Services.AddScoped<OpenAIService>();
 builder.Services.AddScoped<AtsScoringService>();
@@ -76,6 +94,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Enable CORS
+app.UseCors("AllowReactApp");
 
 app.UseAuthentication();
 app.UseAuthorization();
