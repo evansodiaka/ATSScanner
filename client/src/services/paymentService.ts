@@ -2,7 +2,7 @@ import axios, { AxiosResponse } from "axios";
 import authService from "./authService";
 
 const API_URL = process.env.NODE_ENV === 'production' 
-  ? "https://YOUR_AZURE_APP_NAME.azurewebsites.net/api"
+  ? "https://atsscanner-personal-server-gbhacthqdpakayf3.canadacentral-01.azurewebsites.net/api"
   : "https://localhost:7291/api";
 
 export interface MembershipPlan {

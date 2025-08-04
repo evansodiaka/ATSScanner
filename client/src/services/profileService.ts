@@ -2,7 +2,7 @@ import axios, { AxiosResponse } from 'axios';
 import { UserProfile, UpdateUserProfile } from '../types/userProfile';
 
 const API_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://YOUR_AZURE_APP_NAME.azurewebsites.net/api/profile'
+  ? 'https://atsscanner-personal-server-gbhacthqdpakayf3.canadacentral-01.azurewebsites.net/api/profile'
   : 'https://localhost:7291/api/profile';
 
 export class ProfileService {

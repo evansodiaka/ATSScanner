@@ -64,7 +64,15 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp",
         builder => builder
-            .WithOrigins("http://localhost:3000", "https://localhost:3000")
+            .WithOrigins(
+                "http://localhost:3000",  // Local development (React)
+                "https://localhost:3000", // Local development HTTPS (React)
+                "https://localhost:7291", // Local development (Backend)
+                "https://atsscanner-personal-server-gbhacthqdpakayf3.canadacentral-01.azurewebsites.net", // Your actual Azure App Service (serves both frontend & backend)
+                "https://resumatrix.co", // Custom domain
+                "https://www.resumatrix.co", // Custom domain with www
+                "https://atsscanner-personal-server.azurewebsites.net" // Allow self-requests (if needed)
+            )
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials());
@@ -102,12 +110,20 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// Configure static file serving for React app
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseCors("AllowReactApp");
 
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Map API controllers first (takes priority)
 app.MapControllers();
+
+// SPA fallback routing - serve React app for non-API routes
+app.MapFallbackToFile("index.html");
 
 // Ensure database is created and migrations are applied
 using (var scope = app.Services.CreateScope())
