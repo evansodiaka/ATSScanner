@@ -68,11 +68,10 @@ builder.Services.AddCors(options =>
                 "http://localhost:3000",  // Local development (React)
                 "https://localhost:3000", // Local development HTTPS (React)
                 "https://localhost:7291", // Local development (Backend)
-                "https://atsscanner-frontend.azurestaticapps.net", // Production frontend
-                "https://atsscanner-personal-server-gbhacthqdpakayf3.canadacentral-01.azurewebsites.net", // Your actual Azure frontend
+                "https://atsscanner-personal-server-gbhacthqdpakayf3.canadacentral-01.azurewebsites.net", // Your actual Azure App Service (serves both frontend & backend)
                 "https://resumatrix.co", // Custom domain
                 "https://www.resumatrix.co", // Custom domain with www
-                "https://atsscanner-personal-server.azurewebsites.net" // Allow self-requests
+                "https://atsscanner-personal-server.azurewebsites.net" // Allow self-requests (if needed)
             )
             .AllowAnyMethod()
             .AllowAnyHeader()
