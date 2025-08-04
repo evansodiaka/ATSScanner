@@ -24,7 +24,9 @@ builder.Services.AddCors(options =>
             policy.WithOrigins(
                 "http://localhost:3000",  // Local development
                 "https://localhost:3000", // Local development HTTPS
-                "https://atsscanner-frontend.azurestaticapps.net", // Production frontend
+                "https://atsscanner-frontend.azurestaticapps.net", // Azure Static Web App URL
+                "https://resumatrix.co", // Custom domain
+                "https://www.resumatrix.co", // Custom domain with www
                 "https://atsscanner-personal-server.azurewebsites.net" // Allow self-requests
             )
             .AllowAnyMethod()

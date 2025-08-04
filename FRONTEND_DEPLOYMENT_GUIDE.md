@@ -92,8 +92,9 @@ swa deploy ./build --env production --resource-group DefaultResourceGroup-EUS --
 ## 🔍 **Step 3: Verify Deployment**
 
 ### **Check These URLs:**
-1. **Frontend URL**: `https://atsscanner-frontend.azurestaticapps.net`
-2. **API Endpoints**: 
+1. **Frontend URL**: `https://resumatrix.co` (custom domain)
+2. **Fallback URL**: `https://atsscanner-frontend.azurestaticapps.net`
+3. **API Endpoints**: 
    - `https://atsscanner-personal-server.azurewebsites.net/api/profile`
    - `https://atsscanner-personal-server.azurewebsites.net/api/auth`
 
@@ -168,4 +169,6 @@ npm run build
 3. **Monitoring** - Set up Application Insights
 4. **Performance** - Enable CDN and caching
 
-**Your ATSScanner will be live at**: `https://atsscanner-frontend.azurestaticapps.net` 🚀
+**Your Resumatrix will be live at**: 
+- **Temporary**: `https://atsscanner-frontend.azurestaticapps.net` 
+- **Final**: `https://resumatrix.co` (after custom domain setup) 🚀
