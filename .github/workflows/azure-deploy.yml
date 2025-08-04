@@ -1,0 +1,57 @@
+name: Deploy to Azure App Service
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    # Setup Node.js for React build
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+        cache-dependency-path: client/package-lock.json
+    
+    # Setup .NET for backend build
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    
+    # Build React frontend
+    - name: Build React App
+      run: |
+        cd client
+        npm ci
+        npm run build
+    
+    # Copy React build to .NET wwwroot
+    - name: Copy React build to wwwroot
+      run: |
+        mkdir -p ATSScanner/wwwroot
+        cp -r client/build/* ATSScanner/wwwroot/
+    
+    # Build and publish .NET app
+    - name: Build and Publish .NET App
+      run: |
+        cd ATSScanner
+        dotnet restore
+        dotnet build --configuration Release --no-restore
+        dotnet publish --configuration Release --no-build --output ../publish
+    
+    # Deploy to Azure App Service
+    - name: Deploy to Azure App Service
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'ATSScanner-Personal-Server'
+        slot-name: 'production'
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: './publish'

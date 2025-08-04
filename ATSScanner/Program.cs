@@ -110,12 +110,20 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// Configure static file serving for React app
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseCors("AllowReactApp");
 
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Map API controllers first (takes priority)
 app.MapControllers();
+
+// SPA fallback routing - serve React app for non-API routes
+app.MapFallbackToFile("index.html");
 
 // Ensure database is created and migrations are applied
 using (var scope = app.Services.CreateScope())
