@@ -22,6 +22,7 @@ import Homepage from "./components/Homepage";
 import UploadResume from "./components/UploadResume";
 import UploadJobDescription from "./components/UploadJobDescription";
 import OptimizedResume from "./components/OptimizedResume";
+import UserProfile from "./components/UserProfile";
 //import Homepage from "./components/Homepage";
 import authService from "./services/authService";
 import { User } from "./types/user";
@@ -157,6 +158,9 @@ const App: React.FC = () => {
           </Typography>
           {currentUser ? (
             <>
+              <Button color="inherit" component={Link} to="/profile" sx={{ mr: 1 }}>
+                Profile
+              </Button>
               <Typography variant="body1" sx={{ mr: 2 }}>
                 {currentUser.username}
               </Typography>
@@ -203,6 +207,12 @@ const App: React.FC = () => {
           <Route
             path="/job-description"
             element={<UploadJobDescription />}
+          />
+          <Route
+            path="/profile"
+            element={
+              currentUser ? <UserProfile /> : <Navigate to="/login" />
+            }
           />
           {/* Add more routes as needed */}
         </Routes>
