@@ -69,6 +69,15 @@ ScaffoldingReadMe.txt
 # StyleCop
 StyleCopReport.xml
 
+# Environment files with secrets
+appsettings.Production.json
+appsettings.Development.json
+.env
+.env.local
+.env.production
+
+# Keep template versions only
+!appsettings.json.template
 # Files built by Visual Studio
 *_i.c
 *_p.c
