@@ -65,8 +65,9 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowReactApp",
         builder => builder
             .WithOrigins(
-                "http://localhost:3000",  // Local development
-                "https://localhost:3000", // Local development HTTPS
+                "http://localhost:3000",  // Local development (React)
+                "https://localhost:3000", // Local development HTTPS (React)
+                "https://localhost:7291", // Local development (Backend)
                 "https://atsscanner-frontend.azurestaticapps.net", // Production frontend
                 "https://atsscanner-personal-server-gbhacthqdpakayf3.canadacentral-01.azurewebsites.net", // Your actual Azure frontend
                 "https://resumatrix.co", // Custom domain
