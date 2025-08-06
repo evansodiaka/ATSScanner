@@ -1,4 +1,4 @@
-﻿// ATSScanner/Services/UserService.cs
+// ATSScanner/Services/UserService.cs
 using ATSScanner.Models;
 using ATSScanner.Data;
 using Microsoft.EntityFrameworkCore;
@@ -94,12 +94,24 @@ public class UserService
     {
         try
         {
+            Console.WriteLine($"=== GOOGLE TOKEN VALIDATION DEBUG ===");
+            Console.WriteLine($"Token length: {idToken?.Length}");
+            Console.WriteLine($"Token starts with: {idToken?.Substring(0, Math.Min(20, idToken.Length ?? 0))}");
+            
             // Verify Google ID token with Google's servers
             using var httpClient = new HttpClient();
-            var response = await httpClient.GetAsync($"https://oauth2.googleapis.com/tokeninfo?id_token={idToken}");
+            var url = $"https://oauth2.googleapis.com/tokeninfo?id_token={idToken}";
+            Console.WriteLine($"Making request to: {url.Substring(0, Math.Min(100, url.Length))}...");
+            
+            var response = await httpClient.GetAsync(url);
+            Console.WriteLine($"Google API response status: {response.StatusCode}");
             
             if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Google API error: {errorContent}");
                 return null;
+            }
 
             var payload = await response.Content.ReadAsStringAsync();
             var googleUser = System.Text.Json.JsonSerializer.Deserialize<GoogleTokenPayload>(payload);

@@ -1,4 +1,4 @@
-﻿// ATSScanner/Controllers/AuthController.cs
+// ATSScanner/Controllers/AuthController.cs
 using Microsoft.AspNetCore.Mvc;
 using ATSScanner.Models;
 using ATSScanner.Services;
@@ -48,10 +48,22 @@ public class AuthController : ControllerBase
     {
         try
         {
-            Console.WriteLine($"Received Google auth request with token: {dto.IdToken?.Substring(0, 50)}...");
+            Console.WriteLine("=== GOOGLE AUTH DEBUG ===");
+            Console.WriteLine($"Request method: {Request.Method}");
+            Console.WriteLine($"Request path: {Request.Path}");
+            Console.WriteLine($"Content-Type: {Request.ContentType}");
+            Console.WriteLine($"User-Agent: {Request.Headers.UserAgent}");
+            Console.WriteLine($"Origin: {Request.Headers.Origin}");
+            Console.WriteLine($"Dto is null: {dto == null}");
+            Console.WriteLine($"IdToken is null or empty: {string.IsNullOrEmpty(dto?.IdToken)}");
+            
+            if (dto?.IdToken != null && dto.IdToken.Length > 50)
+                Console.WriteLine($"Received Google auth request with token: {dto.IdToken.Substring(0, 50)}...");
+            else
+                Console.WriteLine($"Full token: {dto?.IdToken}");
             
             // Check for null or empty ID token
-            if (string.IsNullOrEmpty(dto.IdToken))
+            if (string.IsNullOrEmpty(dto?.IdToken))
             {
                 Console.WriteLine("Google authentication failed - ID token is null or empty");
                 return BadRequest("ID token is required.");
