@@ -135,6 +135,58 @@ const Homepage: React.FC = () => {
         >
           No credit card required • Free forever plan available
         </p>
+
+        {/* Legal Links */}
+        <div
+          style={{
+            marginTop: "3rem",
+            display: "flex",
+            gap: "2rem",
+            justifyContent: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <a
+            href="/privacy"
+            style={{
+              color: "rgba(255, 255, 255, 0.6)",
+              fontSize: "0.8rem",
+              textDecoration: "none",
+              borderBottom: "1px solid transparent",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "rgba(255, 255, 255, 0.9)";
+              e.currentTarget.style.borderBottomColor = "rgba(255, 255, 255, 0.5)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "rgba(255, 255, 255, 0.6)";
+              e.currentTarget.style.borderBottomColor = "transparent";
+            }}
+          >
+            Privacy Policy
+          </a>
+          <a
+            href="/terms"
+            style={{
+              color: "rgba(255, 255, 255, 0.6)",
+              fontSize: "0.8rem",
+              textDecoration: "none",
+              borderBottom: "1px solid transparent",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "rgba(255, 255, 255, 0.9)";
+              e.currentTarget.style.borderBottomColor = "rgba(255, 255, 255, 0.5)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "rgba(255, 255, 255, 0.6)";
+              e.currentTarget.style.borderBottomColor = "transparent";
+            }}
+          >
+            Terms of Service
+          </a>
+        </div>
       </MDBContainer>
   );
 };

@@ -23,6 +23,9 @@ import UploadResume from "./components/UploadResume";
 import UploadJobDescription from "./components/UploadJobDescription";
 import OptimizedResume from "./components/OptimizedResume";
 import UserProfile from "./components/UserProfile";
+import PrivacyPolicy from "./components/PrivacyPolicy";
+import TermsOfService from "./components/TermsOfService";
+import Footer from "./components/Footer";
 //import Homepage from "./components/Homepage";
 import authService from "./services/authService";
 import { User } from "./types/user";
@@ -172,8 +175,9 @@ const App: React.FC = () => {
         </Toolbar>
       </AppBar>
 
-      <Container className={currentUser ? "dashboard-container" : ""}>
-        <Routes>
+      <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+        <Container className={currentUser ? "dashboard-container" : ""} sx={{ flex: 1 }}>
+          <Routes>
           <Route
             path="/"
             element={currentUser ? <Navigate to="/dashboard" /> : <Homepage />}
@@ -214,9 +218,19 @@ const App: React.FC = () => {
               currentUser ? <UserProfile /> : <Navigate to="/login" />
             }
           />
+          <Route
+            path="/privacy"
+            element={<PrivacyPolicy />}
+          />
+          <Route
+            path="/terms"
+            element={<TermsOfService />}
+          />
           {/* Add more routes as needed */}
-        </Routes>
-      </Container>
+          </Routes>
+        </Container>
+        <Footer />
+      </Box>
     </Router>
     </ThemeProvider>
   );
