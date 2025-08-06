@@ -18,6 +18,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Setup Node.js for React build
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      # Build React frontend
+      - name: Build React App
+        run: |
+          cd client
+          npm ci
+          npm run build
+
+      # Copy React build to .NET wwwroot
+      - name: Copy React build to wwwroot
+        run: |
+          if (Test-Path "ATSScanner/wwwroot") { Remove-Item -Recurse -Force "ATSScanner/wwwroot" }
+          Copy-Item -Recurse -Force "client/build" "ATSScanner/wwwroot"
+
       - name: Set up .NET Core
         uses: actions/setup-dotnet@v4
         with:
