@@ -96,7 +96,7 @@ public class UserService
         {
             Console.WriteLine($"=== GOOGLE TOKEN VALIDATION DEBUG ===");
             Console.WriteLine($"Token length: {idToken?.Length}");
-            Console.WriteLine($"Token starts with: {idToken?.Substring(0, Math.Min(20, idToken.Length ?? 0))}");
+            Console.WriteLine($"Token starts with: {idToken?.Substring(0, Math.Min(20, idToken?.Length ?? 0))}");
             
             // Verify Google ID token with Google's servers
             using var httpClient = new HttpClient();
