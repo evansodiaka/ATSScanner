@@ -1,8 +1,8 @@
-# 🔷 **Azure Deployment Plan for ATSScanner**
+# 🔷 **Azure Deployment Plan for Resumatrix**
 
 ## 🎉 **Perfect Choice! Azure + .NET = Match Made in Heaven**
 
-Your Azure free credits are ideal for launching ATSScanner. Here's your complete deployment strategy:
+Your Azure free credits are ideal for launching Resumatrix. Here's your complete deployment strategy:
 
 ---
 

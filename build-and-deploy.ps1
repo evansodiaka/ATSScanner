@@ -1,6 +1,6 @@
 #!/usr/bin/env pwsh
 
-Write-Host "🚀 Building ATSScanner for All-in-One Deployment" -ForegroundColor Cyan
+Write-Host "🚀 Building Resumatrix for All-in-One Deployment" -ForegroundColor Cyan
 Write-Host "=============================================" -ForegroundColor Cyan
 
 # Step 1: Build React App
