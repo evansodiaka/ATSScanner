@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Container, Typography, Link, Grid2 as Grid } from "@mui/material";
+import { Box, Container, Typography, Link, Grid } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 
 const Footer: React.FC = () => {
@@ -16,7 +16,7 @@ const Footer: React.FC = () => {
     >
       <Container maxWidth="lg">
         <Grid container spacing={4} justifyContent="center" alignItems="center">
-          <Grid xs={12} sm={6} md={4}>
+          <Grid item xs={12} sm={6} md={4}>
             <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
               Resumatrix
             </Typography>
@@ -25,7 +25,7 @@ const Footer: React.FC = () => {
             </Typography>
           </Grid>
           
-          <Grid xs={12} sm={6} md={4}>
+          <Grid item xs={12} sm={6} md={4}>
             <Typography variant="h6" gutterBottom>
               Legal
             </Typography>
@@ -51,7 +51,7 @@ const Footer: React.FC = () => {
             </Box>
           </Grid>
           
-          <Grid xs={12} sm={12} md={4}>
+          <Grid item xs={12} sm={12} md={4}>
             <Typography variant="h6" gutterBottom>
               Contact
             </Typography>
