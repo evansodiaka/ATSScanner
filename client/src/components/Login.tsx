@@ -154,7 +154,9 @@ const Login: React.FC = () => {
       window.location.reload(); // Force refresh to update App state
     } catch (error) {
       console.error("Registration failed:", error);
-      alert("Registration failed. Please try again.");
+      const err: any = error;
+      const serverMsg = err?.response?.data || err?.message || "Unknown error";
+      alert("Registration failed: " + (typeof serverMsg === "string" ? serverMsg : JSON.stringify(serverMsg)));
     }
   };
 
