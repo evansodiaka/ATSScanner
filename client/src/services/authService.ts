@@ -1,8 +1,8 @@
 import axios, { AxiosResponse } from "axios";
 import { User, AuthResponse } from "../types/user";
 
-const API_URL = process.env.NODE_ENV === 'production' 
-  ? "https://atsscanner-personal-server-gbhacthqdpakayf3.canadacentral-01.azurewebsites.net/api/auth"
+const API_URL = process.env.NODE_ENV === 'production'
+  ? `${window.location.origin}/api/auth`
   : "https://localhost:7291/api/auth";
 
 interface AuthService {
